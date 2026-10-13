@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Feed">
+<meta name="theme-color" content="#eceef1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1217" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Feed Personale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eceef1;
+  --surface: #ffffff;
+  --ink: #12161d;
+  --muted: #646b78;
+  --line: #d9dde3;
+  --accent: #e8452c;
+  --accent-ink: #ffffff;
+  --chip: #e2e5ea;
+  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f1217; --surface: #181c23; --ink: #eceef2; --muted: #98a0ae;
+    --line: #272d37; --accent: #ff6a50; --accent-ink: #1a0905; --chip: #232832;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  padding-block: env(safe-area-inset-top, 0px) calc(40px + env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 1180px; margin-inline: auto; }
+
+.top {
+  position: sticky; top: 0; z-index: 10; background: var(--bg);
+  padding-block: 12px 10px; display: flex; flex-direction: column; gap: 10px;
+}
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; margin: 0; }
+.brand span { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.add { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+}
+.add input::placeholder { color: var(--muted); }
+.add button {
+  font: inherit; font-weight: 500; border: 0; border-radius: 10px; padding: 0 18px;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer;
+}
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.demo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 13px; color: var(--muted); background: var(--chip);
+  border-radius: 10px; padding: 8px 12px; margin-bottom: 12px;
+}
+.demo button { font: inherit; font-size: 13px; color: var(--ink); background: none; border: 0; text-decoration: underline; cursor: pointer; white-space: nowrap; padding: 6px 0; }
+
+.feed { column-count: 2; column-gap: 10px; }
+@media (min-width: 720px) { .feed { column-count: 3; column-gap: 14px; } }
+@media (min-width: 1040px) { .feed { column-count: 4; } }
+
+.card {
+  position: relative; break-inside: avoid; margin: 0 0 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: block;
+}
+@media (min-width: 720px) { .card { margin-bottom: 14px; } }
+.card > a { color: inherit; text-decoration: none; display: block; -webkit-touch-callout: none; }
+.media { position: relative; background: linear-gradient(145deg, var(--a), var(--b)); }
+.media::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 50% at 25% 20%, rgba(255,255,255,.28), transparent 70%),
+    radial-gradient(70% 60% at 80% 95%, rgba(0,0,0,.30), transparent 70%);
+}
+.body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.src { font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.src b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.15; letter-spacing: -0.01em; margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+.excerpt { margin: 0; font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+.photo .body { padding-block: 8px 10px; }
+.photo .title { font-size: 14px; }
+
+.play {
+  position: absolute; z-index: 1; left: 50%; top: 50%; translate: -50% -50%;
+  width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center;
+}
+.play::before { content: ""; border-left: 14px solid #fff; border-block: 8px solid transparent; margin-left: 3px; }
+.dur { position: absolute; z-index: 1; right: 8px; bottom: 8px; font-family: var(--font-mono); font-size: 11px; background: rgba(0,0,0,.7); color: #fff; padding: 2px 6px; border-radius: 5px; }
+
+.note { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.note .body { padding: 16px 14px 14px; }
+.note .title { font-size: 21px; font-weight: 800; line-height: 1.08; }
+.note .src { color: inherit; opacity: .75; }
+
+.rm {
+  position: absolute; z-index: 2; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%;
+  border: 0; background: rgba(0,0,0,.5); color: #fff; font-size: 17px; line-height: 1; cursor: pointer; opacity: .85;
+}
+@media (hover: hover) { .rm { opacity: 0; transition: opacity .15s; } .card:hover .rm, .rm:focus-visible { opacity: 1; } }
+.empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+
+.backup { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.backup button, .backup label {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--chip); border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer;
+}
+.backup input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+#msg { flex-basis: 100%; min-height: 1.4em; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Il mio feed</h1><span id="count"></span></div>
+    <form class="add" id="addForm">
+      <input id="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Incolla un link">
+      <button type="submit">Aggiungi</button>
+    </form>
+  </header>
+
+  <div class="demo" id="demo" hidden>
+    <span>Alcune schede sono esempi. Incolla un link per aggiungere il tuo.</span>
+    <button type="button" id="clearDemo">Svuota esempi</button>
+  </div>
+
+  <main class="feed" id="feed"></main>
+  <p class="empty" id="empty" hidden>Il feed è vuoto. Incolla il primo link qui sopra.</p>
+
+  <footer class="backup">
+    <button type="button" id="exportBtn">Scarica backup</button>
+    <label for="importFile">Ripristina da file</label>
+    <input id="importFile" type="file" accept=".json,application/json">
+    <span id="msg" role="status"></span>
+  </footer>
+</div>
+
+<script>
+var KEY = "feed-personale-v1";
+var EXAMPLES = [
+  { id: "e1", kind: "photo", title: "Cantiere, torre in costruzione", domain: "tua-foto", a: "#1f6f8b", b: "#e8b04a", ratio: "4/5", url: "#" },
+  { id: "e2", kind: "article", title: "Forward sales: perché i fondi tornano a comprare sulla carta", domain: "esempio-news.it", excerpt: "Le operazioni di sviluppo con vendita anticipata tornano al centro dopo il calo dei rendimenti di uscita.", a: "#3a4a6b", b: "#9bb4d6", ratio: "16/10", url: "#" },
+  { id: "e3", kind: "video", title: "Come si legge un computo metrico estimativo", domain: "youtube.com", dur: "12:48", a: "#2b2b3c", b: "#c0455a", ratio: "16/9", url: "#" },
+  { id: "e4", kind: "note", title: "Chiedere il ribasso offerto sulle ultime tre gare prima di venerdì.", domain: "nota", url: "" },
+  { id: "e5", kind: "photo", title: "Facciata a Porta Nuova", domain: "tua-foto", a: "#5c7a54", b: "#e9e3c8", ratio: "1/1", url: "#" },
+  { id: "e6", kind: "article", title: "Bando di gara: nuove soglie per i lavori sopra soglia europea", domain: "esempio-gare.it", excerpt: "Cosa cambia per le stazioni appaltanti nelle procedure negoziate.", a: "#7a3b2e", b: "#f0b27a", ratio: "3/2", url: "#" },
+  { id: "e7", kind: "video", title: "Timelapse: 14 mesi di cantiere in 90 secondi", domain: "youtube.com", dur: "1:30", a: "#0f3d3e", b: "#7bd3c1", ratio: "16/9", url: "#" },
+  { id: "e8", kind: "photo", title: "Render atrio, versione 3", domain: "tua-foto", a: "#6b3fa0", b: "#f2a1c4", ratio: "3/4", url: "#" },
+  { id: "e9", kind: "article", title: "Il mercato uffici a Milano chiude il trimestre sopra le attese", domain: "esempio-report.com", excerpt: "Take-up in crescita nel CBD, canoni prime stabili.", a: "#243b53", b: "#829ab1", ratio: "16/9", url: "#" },
+  { id: "e10", kind: "note", title: "Idea: scheda con voce per i sopralluoghi.", domain: "nota", url: "" }
+];
+EXAMPLES.forEach(function (x) { x.demo = true; });
+var PALETTES = [["#1f6f8b","#e8b04a"],["#5c7a54","#e9e3c8"],["#6b3fa0","#f2a1c4"],["#7a3b2e","#f0b27a"],["#243b53","#829ab1"],["#0f3d3e","#7bd3c1"],["#8a2f4a","#f4c5a6"]];
+var RATIOS = ["16/10","4/5","1/1","3/2","16/9"];
+
+var items = [], canSave = true;
+
+function load() {
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var d = JSON.parse(raw); if (d && Array.isArray(d.items)) { items = d.items; return; } }
+  } catch (e) { canSave = false; }
+  items = EXAMPLES.slice();
+  save();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ items: items })); }
+  catch (e) { canSave = false; say("Non riesco a salvare su questo browser. Scarica un backup."); }
+}
+function say(t) { document.getElementById("msg").textContent = t || ""; }
+
+function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+function parseUrl(raw) {
+  var s = raw.trim(); if (!s) return null;
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+  try { var u = new URL(s); if (!u.hostname.includes(".")) return null; return u; } catch (e) { return null; }
+}
+function makeItem(u) {
+  var host = u.hostname.replace(/^www\./, ""), h = hash(u.href);
+  var pal = PALETTES[h % PALETTES.length], slug = "";
+  try { slug = decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() || ""); } catch (e) {}
+  slug = slug.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[-_+]+/g, " ").trim();
+  var title = slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : host;
+  var kind = "article";
+  if (/youtube\.com|youtu\.be|vimeo\.com/.test(host)) kind = "video";
+  else if (/\.(jpe?g|png|webp|gif)$/i.test(u.pathname)) kind = "photo";
+  return { id: "u" + Date.now(), kind: kind, title: title, domain: host, excerpt: "", a: pal[0], b: pal[1], ratio: RATIOS[h % RATIOS.length], url: u.href };
+}
+
+function card(it) {
+  var c = el("article", "card " + it.kind);
+  var rm = el("button", "rm", "×"); rm.type = "button"; rm.setAttribute("aria-label", "Rimuovi");
+  rm.onclick = function () { items = items.filter(function (x) { return x.id !== it.id; }); save(); render(); };
+  var wrap = it.url && it.url !== "#" ? el("a") : el("div");
+  if (wrap.tagName === "A") { wrap.href = it.url; wrap.target = "_blank"; wrap.rel = "noopener noreferrer"; }
+  if (it.kind === "note") {
+    var nb = el("div", "body");
+    nb.appendChild(el("p", "title", it.title));
+    nb.appendChild(el("div", "src")).appendChild(el("b", null, "nota tua"));
+    wrap.appendChild(nb);
+  } else {
+    var m = el("div", "media");
+    m.style.setProperty("--a", it.a || "#444"); m.style.setProperty("--b", it.b || "#888");
+    m.style.aspectRatio = it.ratio || "16/10";
+    if (it.kind === "video") { m.appendChild(el("span", "play")); if (it.dur) m.appendChild(el("span", "dur", it.dur)); }
+    wrap.appendChild(m);
+    var b = el("div", "body");
+    b.appendChild(el("div", "src")).appendChild(el("b", null, it.domain));
+    b.appendChild(el("h2", "title", it.title));
+    if (it.excerpt) b.appendChild(el("p", "excerpt", it.excerpt));
+    wrap.appendChild(b);
+  }
+  c.appendChild(wrap); c.appendChild(rm);
+  return c;
+}
+
+function render() {
+  var f = document.getElementById("feed"); f.textContent = "";
+  items.forEach(function (it) { f.appendChild(card(it)); });
+  document.getElementById("empty").hidden = items.length > 0;
+  document.getElementById("demo").hidden = !items.some(function (x) { return x.demo; });
+  var n = items.length;
+  document.getElementById("count").textContent = n + (n === 1 ? " elemento" : " elementi");
+}
+
+document.getElementById("addForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  var inp = document.getElementById("url"), u = parseUrl(inp.value);
+  if (!u) { inp.value = ""; inp.placeholder = "Link non valido, riprova"; return; }
+  items.unshift(makeItem(u)); inp.value = ""; inp.placeholder = "Incolla un link";
+  save(); render(); say(""); window.scrollTo({ top: 0 });
+});
+document.getElementById("clearDemo").addEventListener("click", function () {
+  items = items.filter(function (x) { return !x.demo; }); save(); render();
+});
+
+document.getElementById("exportBtn").addEventListener("click", function () {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); };
+  var name = "feed-backup-" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + ".json";
+  var blob = new Blob([JSON.stringify({ items: items }, null, 2)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  say("Backup creato: " + items.length + " elementi.");
+});
+document.getElementById("importFile").addEventListener("change", function (e) {
+  var file = e.target.files && e.target.files[0]; if (!file) return;
+  var r = new FileReader();
+  r.onload = function () {
+    try {
+      var d = JSON.parse(r.result), list = Array.isArray(d) ? d : d.items;
+      if (!Array.isArray(list)) throw new Error("formato");
+      var have = {}; items.forEach(function (x) { have[x.id] = 1; });
+      var added = list.filter(function (x) { return x && x.id && x.kind && x.title && !have[x.id]; });
+      items = items.concat(added); save(); render();
+      say("Ripristinati " + added.length + " elementi.");
+    } catch (err) { say("Il file non è un backup valido."); }
+    e.target.value = "";
+  };
+  r.readAsText(file);
+});
+
+load(); render();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+</script>
+</body>
+</html>
