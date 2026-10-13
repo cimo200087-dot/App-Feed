@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Case">
+<meta name="theme-color" content="#edeff2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="casa.png">
+<link rel="icon" href="casa.png">
+<title>Annunci Casa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lista di schede orizzontali (foto a sinistra, quote a destra), scheda di dettaglio a pannello dal basso, confronto in tabella */
+:root {
+  color-scheme: light;
+  --bg: #edeff2; --surface: #ffffff; --ink: #14181f; --muted: #5f6775; --line: #d8dce2;
+  --accent: #2a5bd7; --accent-ink: #ffffff; --chip: #e3e6eb;
+  --ok: #17754c; --ok-bg: #dcf1e5; --warn: #8a5a0b; --warn-bg: #f7e8c8;
+  --bad: #b02a1c; --bad-bg: #f9dcd7; --info: #2147b0; --info-bg: #dde6fb;
+  --font-display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0e1116; --surface: #171b22; --ink: #eceef2; --muted: #98a0ae; --line: #262c36;
+    --accent: #6c93ff; --accent-ink: #08122b; --chip: #222834;
+    --ok: #5fd09b; --ok-bg: #14301f; --warn: #e8bb6a; --warn-bg: #35290f;
+    --bad: #ff8d7e; --bad-bg: #3a1a16; --info: #8fb0ff; --info-bg: #18274a;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  padding-block: env(safe-area-inset-top, 0px) calc(110px + env(safe-area-inset-bottom, 0px));
+}
+body.lock { overflow: hidden; }
+.wrap { max-width: 1180px; margin-inline: auto; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { position: sticky; top: 0; z-index: 10; background: var(--bg); padding-block: 12px 10px; display: flex; flex-direction: column; gap: 10px; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand h1 { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; margin: 0; }
+.seg { display: flex; background: var(--chip); border-radius: 11px; padding: 3px; }
+.seg button { border: 0; background: none; padding: 7px 15px; border-radius: 8px; color: var(--muted); font-weight: 500; }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+.add { display: flex; gap: 8px; }
+.add input { flex: 1; min-width: 0; font-size: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.add input::placeholder { color: var(--muted); }
+.add button { border: 0; border-radius: 10px; padding: 0 18px; background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+
+.demo { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); background: var(--chip); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; }
+.demo button { background: none; border: 0; text-decoration: underline; white-space: nowrap; padding: 6px 0; }
+
+.sum { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
+.stat { background: var(--surface); padding: 9px 12px; min-width: 0; }
+.stat .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.stat .v { font-family: var(--font-display); font-weight: 600; font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+
+.stat .v .u { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.bar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.fchip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; color: var(--muted); }
+.fchip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.fchip b { font-family: var(--font-mono); font-weight: 500; margin-left: 4px; }
+.sort { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.sort select { font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+.list { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 760px) { .list { grid-template-columns: 1fr 1fr; gap: 12px; } body { padding-inline: 20px; } }
+@media (min-width: 1080px) { .list { grid-template-columns: repeat(3, 1fr); } }
+
+.card { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; }
+.card.off { opacity: .62; }
+.card.off .c-title { text-decoration: line-through; }
+.thumb { width: 92px; aspect-ratio: 1; border-radius: 10px; background: var(--chip); overflow: hidden; display: grid; place-items: center; color: var(--muted); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb svg { width: 40px; height: 40px; }
+.c-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.c-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.2; letter-spacing: -0.005em; margin: 0; padding-right: 34px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.c-zone { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-price { font-family: var(--font-mono); font-size: 18px; font-weight: 500; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.c-price small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.c-price .none { font-size: 13px; color: var(--muted); font-family: var(--font-body); }
+.c-meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.pill { font-size: 11.5px; line-height: 1.5; padding: 1px 8px; border-radius: 999px; background: var(--chip); color: var(--ink); font-weight: 500; white-space: nowrap; }
+.pill[data-t="ok"] { background: var(--ok-bg); color: var(--ok); }
+.pill[data-t="warn"] { background: var(--warn-bg); color: var(--warn); }
+.pill[data-t="bad"] { background: var(--bad-bg); color: var(--bad); }
+.pill[data-t="info"] { background: var(--info-bg); color: var(--info); }
+.pill[data-t="mute"] { color: var(--muted); }
+.pick { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--surface); display: grid; place-items: center; padding: 0; color: transparent; font-size: 17px; line-height: 1; }
+.pick[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+
+.foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.foot .budget { display: flex; align-items: center; gap: 8px; flex-basis: 100%; }
+.foot .budget input { width: 110px; font-size: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+#cityIn { width: 170px !important; }
+.geo small { display: block; margin-top: 3px; opacity: .85; overflow-wrap: anywhere; }
+.foot button, .foot label.btn { font-size: 13px; background: var(--chip); border: 0; border-radius: 8px; padding: 9px 12px; color: var(--ink); cursor: pointer; }
+.hidden-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+#msg { flex-basis: 100%; min-height: 1.4em; }
+
+.cmpbar { position: fixed; z-index: 20; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: 560px; margin-inline: auto; background: var(--ink); color: var(--bg); border-radius: 14px; padding: 8px 8px 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.28); }
+.cmpbar span { flex: 1; font-weight: 500; }
+.cmpbar button { border: 0; border-radius: 9px; padding: 10px 14px; font-weight: 500; }
+.cmpbar .go { background: var(--accent); color: var(--accent-ink); }
+.cmpbar .no { background: transparent; color: var(--bg); opacity: .8; }
+
+.overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; }
+.backdrop { position: absolute; inset: 0; background: rgba(8,10,14,.52); }
+.sheet { position: relative; width: 100%; max-width: 680px; margin-inline: auto; max-height: 92vh; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--surface); border-radius: 18px 18px 0 0; padding: 0 16px calc(28px + env(safe-area-inset-bottom, 0px)); }
+.sheet.wide { max-width: 980px; height: 92vh; height: 92dvh; }
+.sheet-head { position: sticky; top: 0; z-index: 2; background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 10px; }
+.sheet-head h2 { font-family: var(--font-display); font-size: 20px; margin: 0; font-weight: 800; letter-spacing: -0.01em; }
+.sheet-head button { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 8px 16px; font-weight: 500; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label, .lbl { font-size: 12px; color: var(--muted); font-weight: 500; }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; font-size: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.field textarea { min-height: 74px; resize: vertical; }
+.row { display: flex; gap: 8px; align-items: stretch; }
+.row input { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 10px 14px; text-decoration: none; font-size: 14px; white-space: nowrap; }
+.hint { font-size: 13px; background: var(--info-bg); color: var(--info); border-radius: 10px; padding: 9px 12px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.hint[data-t="warn"] { background: var(--warn-bg); color: var(--warn); }
+.hint button { background: none; border: 0; text-decoration: underline; color: inherit; white-space: nowrap; }
+.calc { font-family: var(--font-mono); font-size: 13px; background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 3px; font-variant-numeric: tabular-nums; }
+.calc div { display: flex; justify-content: space-between; gap: 12px; }
+.calc span:first-child { color: var(--muted); }
+.stars { display: flex; gap: 2px; }
+.stars button { background: none; border: 0; font-size: 28px; line-height: 1; padding: 4px; color: var(--line); }
+.stars button.on { color: var(--warn); }
+.photo-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.photo-row img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; }
+.danger { border: 1px solid var(--bad); background: none; color: var(--bad); border-radius: 10px; padding: 11px 14px; font-weight: 500; }
+
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table.cmp { border-collapse: collapse; width: 100%; }
+.cmp th, .cmp td { padding: 9px 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13.5px; min-width: 132px; }
+.cmp tr:last-child th, .cmp tr:last-child td { border-bottom: 0; }
+.cmp th[scope="row"] { position: sticky; left: 0; background: var(--surface); color: var(--muted); font-weight: 500; font-size: 12px; min-width: 92px; z-index: 1; }
+.cmp thead th { font-family: var(--font-display); font-size: 15px; font-weight: 600; background: var(--surface); }
+.cmp td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.cmp td.best { color: var(--ok); font-weight: 600; background: var(--ok-bg); }
+.cmp ul { margin: 0; padding-left: 16px; }
+.cmp .x { display: block; margin-top: 4px; background: none; border: 0; padding: 0; font-size: 12px; color: var(--muted); text-decoration: underline; font-family: var(--font-body); font-weight: 400; }
+.cmp img { width: 100%; max-width: 120px; aspect-ratio: 4/3; object-fit: cover; border-radius: 8px; display: block; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Case</h1>
+      <div class="seg" role="tablist" aria-label="Tipo di annuncio">
+        <button type="button" role="tab" id="mAff" data-mode="affitto">Affitto</button>
+        <button type="button" role="tab" id="mVen" data-mode="vendita">Vendita</button>
+      </div>
+    </div>
+    <form class="add" id="addForm">
+      <input id="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Incolla il link dell'annuncio">
+      <button type="submit">Aggiungi</button>
+    </form>
+  </header>
+
+  <div class="demo" id="demo" hidden>
+    <span>Gli annunci con l'etichetta "esempio" servono solo da prova.</span>
+    <button type="button" id="clearDemo">Svuota esempi</button>
+  </div>
+
+  <section class="sum" id="sum" aria-label="Riepilogo"></section>
+  <div class="bar">
+    <div class="chips" id="chips"></div>
+    <label class="sort">Ordina per
+      <select id="sort">
+        <option value="recenti">Più recenti</option>
+        <option value="ppsm">Prezzo al mq</option>
+        <option value="total">Costo totale</option>
+        <option value="station">Distanza stazione</option>
+        <option value="rating">Voto</option>
+      </select>
+    </label>
+  </div>
+
+  <main class="list" id="list"></main>
+  <p class="empty" id="empty" hidden></p>
+
+  <footer class="foot">
+    <div class="budget"><label for="budgetIn" id="budgetLbl">Budget massimo</label><input id="budgetIn" type="text" inputmode="decimal" placeholder="nessuno"></div>
+    <div class="budget"><label for="cityIn">Città di ricerca</label><input id="cityIn" type="text" placeholder="es. Pavia" autocomplete="off"></div>
+    <button type="button" id="exportBtn">Scarica backup</button>
+    <label class="btn" for="importFile">Ripristina da file</label>
+    <input class="hidden-file" id="importFile" type="file" accept=".json,application/json">
+    <span id="msg" role="status"></span>
+  </footer>
+</div>
+
+<div class="cmpbar" id="cmpbar" hidden>
+  <span id="cmpCount"></span>
+  <button type="button" class="no" id="cmpClear">Annulla</button>
+  <button type="button" class="go" id="cmpGo">Confronta</button>
+</div>
+
+<div class="overlay" id="sheetWrap" hidden>
+  <div class="backdrop" id="sheetBack"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-label="Dettagli annuncio">
+    <div class="sheet-head"><h2>Dettagli</h2><button type="button" id="sheetClose">Fatto</button></div>
+    <div class="form" id="sheetBody"></div>
+  </section>
+</div>
+
+<div class="overlay" id="cmpWrap" hidden>
+  <div class="backdrop" id="cmpBack"></div>
+  <section class="sheet wide" role="dialog" aria-modal="true" aria-label="Confronto">
+    <div class="sheet-head"><h2>Confronto</h2><button type="button" id="cmpClose">Chiudi</button></div>
+    <div class="tbl-wrap" id="cmpBody"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+"use strict";
+var KEY = "casa-tracker-v1";
+var STATI = [["da_vedere", "Da vedere"], ["contattata", "Contattata"], ["visitata", "Visitata"], ["trattativa", "In trattativa"], ["scartata", "Scartata"]];
+var STATO_T = { da_vedere: "", contattata: "info", visitata: "info", trattativa: "ok", scartata: "mute" };
+var JUNK = /just a moment|attention required|access denied|forbidden|captcha|robot|verifying|are you human|pardon our interruption|cloudflare|403|not found|404/i;
+var HOUSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
+
+var S = { items: [], settings: { budget: { affitto: 600, vendita: null }, city: "Pavia" }, mode: "affitto", filter: "attive", sort: "recenti", selected: new Set() };
+var SH = null, inflight = {}, saveT = null;
+
+function $(id) { return document.getElementById(id); }
+function h(tag, props, kids) {
+  var n = document.createElement(tag), val;
+  if (props) Object.keys(props).forEach(function (k) {
+    var v = props[k];
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k === "value") val = v;
+    else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  });
+  (kids || []).forEach(function (c) { if (c == null || c === false) return; n.appendChild(typeof c === "object" ? c : document.createTextNode(String(c))); });
+  if (val !== undefined) n.value = val;
+  return n;
+}
+function say(t) { $("msg").textContent = t || ""; }
+
+/* ---------- dati ---------- */
+function demoItems() {
+  var t = Date.now(), base = { demo: true, meta: "manual", url: "", photo: "", img: "" };
+  function mk(i, o) { return Object.assign({ id: "d" + i, created: t - i * 1000, updated: t - i * 1000, mode: "affitto", status: "da_vedere", rating: 0, pros: "", cons: "", notes: "", contact: "", phone: "", visit: "" }, base, o); }
+  return [
+    mk(1, { title: "Bilocale arredato vicino alla stazione", zone: "Centro", station: 8, price: 560, condo: 40, sqm: 48, rooms: 2, floor: "2", furnished: "si", contract: "4+4", status: "visitata", rating: 4, pros: "Luminoso\nCucina nuova", cons: "Niente ascensore" }),
+    mk(2, { title: "Trilocale in zona ospedale", zone: "Zona ospedale", station: 15, price: 640, condo: 50, sqm: 70, rooms: 3, floor: "3", furnished: "no", contract: "3+2", status: "da_vedere" }),
+    mk(3, { title: "Monolocale ristrutturato", zone: "Borgo", station: 5, price: 480, condo: 30, sqm: 28, rooms: 1, floor: "T", furnished: "si", contract: "transitorio", status: "scartata", cons: "Troppo piccolo" }),
+    mk(4, { mode: "vendita", title: "Trilocale da ristrutturare", zone: "Zona nord", station: 20, price: 148000, condo: 90, reno: 25000, sqm: 82, rooms: 3, floor: "1", status: "contattata" }),
+    mk(5, { mode: "vendita", title: "Bilocale con balcone", zone: "Centro", station: 10, price: 165000, condo: 70, reno: 0, sqm: 55, rooms: 2, floor: "4", status: "da_vedere", rating: 3 })
+  ];
+}
+function load() {
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d && Array.isArray(d.items)) {
+        S.items = d.items;
+        if (d.settings && d.settings.budget) S.settings = d.settings;
+        if (S.settings.city === undefined) S.settings.city = "Pavia";
+        if (d.mode === "affitto" || d.mode === "vendita") S.mode = d.mode;
+        if (d.filter) S.filter = d.filter;
+        if (d.sort) S.sort = d.sort;
+        return;
+      }
+    }
+  } catch (e) {}
+  S.items = demoItems(); save();
+}
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ v: 1, items: S.items, settings: S.settings, mode: S.mode, filter: S.filter, sort: S.sort }));
+    return true;
+  } catch (e) { say("Non riesco a salvare: la memoria del browser è piena. Rimuovi qualche foto o scarica un backup."); return false; }
+}
+function queueSave() { clearTimeout(saveT); saveT = setTimeout(save, 250); }
+function find(id) { return S.items.filter(function (x) { return x.id === id; })[0]; }
+
+/* ---------- numeri ---------- */
+var nf0 = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0 });
+var nf1 = new Intl.NumberFormat("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function eur(n) { return n == null ? "–" : nf0.format(Math.round(n)) + " €"; }
+function ppsmTxt(mode, v) { return v == null ? "–" : (mode === "affitto" ? nf1.format(v) : nf0.format(Math.round(v))) + " €/mq"; }
+function parseNum(s) {
+  s = String(s).trim().replace(/\s|€/g, ""); if (!s) return null;
+  if (s.indexOf(",") > -1) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  var n = parseFloat(s); return isFinite(n) && n >= 0 ? n : null;
+}
+function numStr(n) { return n == null ? "" : String(n).replace(".", ","); }
+function calc(it) {
+  var total = null, ppsm = null;
+  if (it.price != null) {
+    total = it.price + (it.mode === "affitto" ? (it.condo || 0) : (it.reno || 0));
+    ppsm = it.sqm ? (it.mode === "affitto" ? total : it.price) / it.sqm : null;
+  }
+  return { total: total, ppsm: ppsm };
+}
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function budgetFor(mode) { var b = S.settings.budget[mode]; return b == null ? null : b; }
+function modeItems() { return S.items.filter(function (x) { return x.mode === S.mode; }); }
+function stats() {
+  var act = modeItems().filter(function (x) { return x.status !== "scartata"; });
+  var pp = [], tot = [];
+  act.forEach(function (x) { var c = calc(x); if (c.ppsm != null) pp.push(c.ppsm); if (c.total != null) tot.push(c.total); });
+  return { n: act.length, median: median(pp), nPp: pp.length, min: tot.length ? Math.min.apply(null, tot) : null, max: tot.length ? Math.max.apply(null, tot) : null };
+}
+function statoLabel(s) { for (var i = 0; i < STATI.length; i++) if (STATI[i][0] === s) return STATI[i][1]; return "Da vedere"; }
+
+/* ---------- lettura annuncio ---------- */
+function parseUrl(raw) {
+  var s = String(raw).trim(); if (!s || /\s/.test(s)) return null;
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+  try { var u = new URL(s); return u.hostname.indexOf(".") > 0 ? u : null; } catch (e) { return null; }
+}
+function newItem(u, raw) {
+  var t = Date.now(), it = { id: "u" + t, created: t, updated: t, mode: S.mode, status: "da_vedere", rating: 0, pros: "", cons: "", notes: "", contact: "", phone: "", visit: "", photo: "", img: "", demo: false };
+  if (u) {
+    var host = u.hostname.replace(/^www\./, ""), slug = "";
+    try { slug = decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() || ""); } catch (e) {}
+    slug = slug.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[-_+]+/g, " ").trim();
+    it.title = (!slug || /^\d+$/.test(slug)) ? "Annuncio su " + host : slug.charAt(0).toUpperCase() + slug.slice(1);
+    it.url = u.href; it.autoTitle = true; it.meta = "loading";
+    if (/affitt/i.test(u.href)) it.mode = "affitto"; else if (/vendit|compra/i.test(u.href)) it.mode = "vendita";
+  } else { it.title = raw; it.url = ""; it.meta = "manual"; }
+  return it;
+}
+function extract(text, mode) {
+  var o = {}, m;
+  m = text.match(/€\s*([\d.]+(?:,\d+)?)|([\d.]+(?:,\d+)?)\s*(?:€|euro)/i);
+  if (m) { var p = parseNum(m[1] || m[2]); var lo = mode === "affitto" ? 100 : 10000, hi = mode === "affitto" ? 10000 : 20000000; if (p != null && p >= lo && p <= hi) o.price = p; }
+  m = text.match(/(\d{2,4})\s*(?:m²|m2|mq|metri quadri)/i);
+  if (m) { var q = parseInt(m[1], 10); if (q >= 8 && q <= 1000) o.sqm = q; }
+  m = text.match(/(\d)\s*local[ei]/i);
+  if (m) o.rooms = parseInt(m[1], 10);
+  else if (/monolocale/i.test(text)) o.rooms = 1; else if (/bilocale/i.test(text)) o.rooms = 2;
+  else if (/trilocale/i.test(text)) o.rooms = 3; else if (/quadrilocale/i.test(text)) o.rooms = 4;
+  return o;
+}
+function fetchJSON(url) {
+  var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 9000);
+  return fetch(url, { signal: ctl.signal }).then(function (r) { clearTimeout(t); if (!r.ok) throw new Error("http " + r.status); return r.json(); }, function (e) { clearTimeout(t); throw e; });
+}
+function enrich(it) {
+  if (inflight[it.id] || !it.url) return;
+  var u = parseUrl(it.url); if (!u) return;
+  inflight[it.id] = 1; it.meta = "loading";
+  fetchJSON("https://api.microlink.io/?url=" + encodeURIComponent(u.href)).then(function (r) {
+    var d = r && r.data; if (!d || r.status !== "success") throw new Error("vuoto");
+    var title = (d.title || "").trim(), desc = (d.description || "").trim();
+    if (JUNK.test(title)) title = ""; if (JUNK.test(desc)) desc = "";
+    var img = d.image && d.image.url ? d.image.url : "";
+    if (!title && !desc && !img) throw new Error("vuoto");
+    var cur = find(it.id); if (!cur) return;
+    if (title && cur.autoTitle) cur.title = title;
+    var ex = extract(title + " " + desc, cur.mode);
+    ["price", "sqm", "rooms"].forEach(function (k) { if (cur[k] == null && ex[k] != null) cur[k] = ex[k]; });
+    var ad = extractAddress(title + " " + desc); if (ad && !cur.zone) cur.zone = ad;
+    if (img && !cur.photo) cur.img = img;
+    cur.meta = "ok";
+  }).catch(function () { var cur = find(it.id); if (cur) cur.meta = "fail"; })
+    .then(function () {
+      delete inflight[it.id]; save(); renderAll(); syncSheet();
+      var c = find(it.id); if (c && c.zone && c.station == null && !c.stationManual) locate(c, false);
+    });
+}
+
+/* ---------- posizione dalla mappa dell'annuncio ---------- */
+var PROXIES = [
+  function (u) { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+  function (u) { return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+];
+var pending = {};
+function fetchText(url, ms) {
+  var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, ms || 12000);
+  return fetch(url, { signal: ctl.signal }).then(function (r) { clearTimeout(t); if (!r.ok) throw new Error("http " + r.status); return r.text(); }, function (e) { clearTimeout(t); throw e; });
+}
+function inItaly(a, b) { return a > 35.4 && a < 47.2 && b > 6.5 && b < 18.6; }
+function metaContent(html, keys) {
+  var tags = html.match(/<meta\b[^>]*>/gi) || [];
+  for (var i = 0; i < tags.length; i++) {
+    var t = tags[i], k = t.match(/(?:name|property)\s*=\s*["']([^"']+)["']/i), c = t.match(/content\s*=\s*["']([^"']*)["']/i);
+    if (k && c && keys.indexOf(k[1].toLowerCase()) > -1) return c[1];
+  }
+  return null;
+}
+function coordsFromHtml(html) {
+  if (!html) return null;
+  function ok(a, b) { a = parseFloat(a); b = parseFloat(b); return isFinite(a) && isFinite(b) && inItaly(a, b) ? { lat: a, lon: b } : null; }
+  var m, r;
+  m = html.match(/"latitude"\s*:\s*"?(-?\d{1,2}\.\d+)"?\s*,\s*"longitude"\s*:\s*"?(-?\d{1,3}\.\d+)/i); if (m && (r = ok(m[1], m[2]))) return r;
+  m = html.match(/"longitude"\s*:\s*"?(-?\d{1,3}\.\d+)"?\s*,\s*"latitude"\s*:\s*"?(-?\d{1,2}\.\d+)/i); if (m && (r = ok(m[2], m[1]))) return r;
+  var la = metaContent(html, ["place:location:latitude", "og:latitude", "latitude"]), lo = metaContent(html, ["place:location:longitude", "og:longitude", "longitude"]);
+  if (la && lo && (r = ok(la, lo))) return r;
+  var gp = metaContent(html, ["geo.position", "icbm"]);
+  if (gp) { m = gp.match(/(-?\d{1,2}\.\d+)\s*[;,]\s*(-?\d{1,3}\.\d+)/); if (m && (r = ok(m[1], m[2]))) return r; }
+  m = html.match(/latitude["']?\s*[:=]\s*["']?(-?\d{1,2}\.\d{3,})[\s\S]{0,300}?longitude["']?\s*[:=]\s*["']?(-?\d{1,3}\.\d{3,})/i); if (m && (r = ok(m[1], m[2]))) return r;
+  m = html.match(/"lat"\s*:\s*"?(-?\d{1,2}\.\d+)"?\s*,\s*"(?:lng|lon|long)"\s*:\s*"?(-?\d{1,3}\.\d+)/i); if (m && (r = ok(m[1], m[2]))) return r;
+  m = html.match(/[?&;](?:center|ll|markers?)=[^&"']*?(-?\d{1,2}\.\d{3,})(?:,|%2C)(-?\d{1,3}\.\d{3,})/i); if (m && (r = ok(m[1], m[2]))) return r;
+  m = html.match(/@(-?\d{1,2}\.\d{3,}),(-?\d{1,3}\.\d{3,})/); if (m && (r = ok(m[1], m[2]))) return r;
+  return null;
+}
+function findCoords(it) {
+  if (!it || !it.url || it.pLat != null || pending[it.id]) return;
+  pending[it.id] = 1; it.pState = "loading"; paintGeo();
+  var i = 0;
+  function tryNext() {
+    if (i >= PROXIES.length) return Promise.reject(new Error("no"));
+    var u = PROXIES[i++](it.url);
+    return fetchText(u, 12000).then(function (html) { var c = coordsFromHtml(html); if (!c) throw new Error("no"); return c; }).catch(tryNext);
+  }
+  tryNext().then(function (c) {
+    var cur = find(it.id); if (cur) { cur.pLat = c.lat; cur.pLon = c.lon; cur.pState = "ok"; }
+  }, function () {
+    var cur = find(it.id); if (cur) cur.pState = "fail";
+  }).then(function () {
+    delete pending[it.id]; save();
+    var c = find(it.id);
+    if (c && c.pLat != null && c.station == null && !c.stationManual) locate(c, false); else { renderAll(); syncSheet(); }
+  });
+}
+
+/* ---------- distanza dalla stazione (OpenStreetMap) ---------- */
+var NOM = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&q=";
+var OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+var FOOT = "https://routing.openstreetmap.de/routed-foot/route/v1/foot/";
+var locating = {}, lastNom = 0;
+function uerr(m) { var e = new Error(m); e.user = true; return e; }
+function nomWait() { var d = Math.max(0, lastNom + 1200 - Date.now()); lastNom = Date.now() + d; return new Promise(function (r) { setTimeout(r, d); }); }
+function haversine(a, b, c, d) {
+  var R = 6371000, t = Math.PI / 180, x = (c - a) * t, y = (d - b) * t;
+  var s = Math.sin(x / 2) * Math.sin(x / 2) + Math.cos(a * t) * Math.cos(c * t) * Math.sin(y / 2) * Math.sin(y / 2);
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function extractAddress(text) {
+  var m = String(text).match(/\b(?:Via|Viale|Corso|Piazza|Piazzale|Largo|Vicolo|Strada)\s+[A-Za-zÀ-ÿ'’.]+(?:\s+[A-Za-zÀ-ÿ'’.]+){0,3}(?:,?\s+\d{1,4}[A-Za-z]?)?/i);
+  return m ? m[0].trim() : "";
+}
+function isPrecise(g) {
+  var c = g.category, t = g.type;
+  if (c === "boundary") return false;
+  if (c === "place") return t === "house" || t === "building";
+  return true;
+}
+function overpass(q, i) {
+  i = i || 0;
+  return fetchJSON(OVERPASS[i] + "?data=" + encodeURIComponent(q), 20000).catch(function (e) { if (i + 1 < OVERPASS.length) return overpass(q, i + 1); throw e; });
+}
+function hasAddr(it) { return !!(it.zone && it.zone.trim().length >= 4); }
+function locate(it, force) {
+  if (!it) return;
+  var byAddr = hasAddr(it);
+  if (!byAddr && it.pLat == null) return;
+  if (it.stationManual && !force) return;
+  if (locating[it.id]) return;
+  locating[it.id] = 1; it.geoState = "loading"; it.geoErr = "";
+  if (force) it.stationManual = false;
+  paintGeo();
+  var stage = byAddr ? "indirizzo" : "posizione", first;
+  if (byAddr) {
+    var q = it.zone.trim(), city = (S.settings.city || "").trim();
+    if (city && q.toLowerCase().indexOf(city.toLowerCase()) < 0) q += ", " + city;
+    first = nomWait().then(function () { return fetchJSON(NOM + encodeURIComponent(q), 12000); });
+  } else first = Promise.resolve([{ lat: it.pLat, lon: it.pLon, src: "annuncio" }]);
+  first.then(function (arr) {
+    if (!arr || !arr.length) throw uerr("Non trovo questo indirizzo. Scrivi via, numero e città.");
+    var g = arr[0], lat = parseFloat(g.lat), lon = parseFloat(g.lon);
+    var cur0 = find(it.id);
+    if (cur0) { cur0.geoName = g.src ? "" : (g.display_name || ""); cur0.geoPrecise = g.src ? true : isPrecise(g); cur0.geoSrc = g.src ? "annuncio" : "indirizzo"; cur0.glat = lat; cur0.glon = lon; }
+    stage = "stazioni";
+    var oq = '[out:json][timeout:15];(nwr["railway"="station"]["station"!="subway"]["subway"!="yes"](around:6000,' + lat + "," + lon + ');nwr["railway"="halt"](around:6000,' + lat + "," + lon + "););out center tags 30;";
+    return overpass(oq).then(function (res) {
+      var cands = ((res && res.elements) || []).map(function (e) {
+        var la = e.lat != null ? e.lat : (e.center && e.center.lat), lo = e.lon != null ? e.lon : (e.center && e.center.lon);
+        return la == null || lo == null ? null : { name: (e.tags && e.tags.name) || "", lat: la, lon: lo, d: haversine(lat, lon, la, lo) };
+      }).filter(Boolean).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+      if (!cands.length) throw uerr("Nessuna stazione entro 6 km da questo indirizzo.");
+      stage = "percorso";
+      var best = null, i = 0;
+      function next() {
+        if (i >= cands.length) return Promise.resolve();
+        var c = cands[i++];
+        return fetchJSON(FOOT + lon + "," + lat + ";" + c.lon + "," + c.lat + "?overview=false", 12000).then(function (r) {
+          var rt = r && r.routes && r.routes[0];
+          if (rt && (!best || rt.distance < best.m)) best = { c: c, m: rt.distance, approx: false };
+        }, function () {}).then(next);
+      }
+      return next().then(function () { return best || { c: cands[0], m: cands[0].d * 1.3, approx: true }; });
+    });
+  }).then(function (best) {
+    var cur = find(it.id); if (!cur) return;
+    cur.stationM = Math.round(best.m / 10) * 10;
+    cur.station = Math.max(1, Math.round(best.m / 80));
+    cur.stationName = best.c.name || "stazione";
+    cur.stationApprox = best.approx; cur.geoState = "ok";
+  }).catch(function (e) {
+    var cur = find(it.id); if (!cur) return;
+    cur.geoState = "fail";
+    cur.geoErr = e && e.user ? e.message : "Il servizio delle mappe non risponde (" + stage + "). Riprova tra poco.";
+  }).then(function () { delete locating[it.id]; save(); renderAll(); syncSheet(); });
+}
+function paintGeo() {
+  if (!SH || !SH.geoBox) return;
+  var it = find(SH.id); if (!it) return;
+  var box = SH.geoBox; box.textContent = "";
+  var msg = "", t = "", sub = "";
+  if (it.geoState === "loading") msg = "Cerco la stazione più vicina…";
+  else if (it.geoState === "fail") { msg = it.geoErr; t = "warn"; }
+  else if (it.stationManual) msg = "Valore inserito a mano.";
+  else if (it.station != null && it.stationName) {
+    msg = it.stationName + (it.stationApprox ? " · stima in linea d'aria, percorso a piedi non disponibile" : " · percorso a piedi, 80 m al minuto");
+    if (it.geoSrc === "annuncio") sub = "Posizione indicativa presa dalla mappa dell'annuncio";
+    else if (it.geoName) sub = "Indirizzo trovato: " + (it.geoName.length > 90 ? it.geoName.slice(0, 87) + "…" : it.geoName);
+    if (it.geoPrecise === false) { msg += ". Indirizzo generico: ho usato il centro della zona, aggiungi via e numero"; t = "warn"; }
+  } else if (!it.zone) {
+    if (it.pState === "loading") msg = "Cerco la posizione sulla mappa dell'annuncio…";
+    else if (it.pState === "fail") { msg = "Non trovo la posizione nell'annuncio (i portali spesso bloccano la lettura). Scrivi l'indirizzo e calcolo io la distanza."; t = "warn"; }
+    else msg = "Scrivi l'indirizzo e calcolo io la distanza dalla stazione.";
+  }
+  else msg = "Calcolo in corso appena finisci di scrivere l'indirizzo.";
+  box.setAttribute("data-t", t);
+  var left = h("div", null, [h("span", { text: msg })]);
+  if (sub) left.appendChild(h("small", { text: sub }));
+  if (it.glat != null && it.station != null && !it.stationManual && it.geoState !== "loading") {
+    left.appendChild(h("small", null, [h("a", { href: "https://www.openstreetmap.org/?mlat=" + it.glat + "&mlon=" + it.glon + "#map=17/" + it.glat + "/" + it.glon, target: "_blank", rel: "noopener noreferrer", style: "color:inherit", text: "Vedi sulla mappa" })]));
+  }
+  box.appendChild(left);
+  if (it.zone && it.zone.trim().length >= 4 && it.geoState !== "loading") box.appendChild(h("button", { type: "button", text: it.geoState === "fail" ? "Riprova" : "Ricalcola", onclick: function () { locate(find(SH.id), true); } }));
+}
+
+/* ---------- lista ---------- */
+function cmpVal(a, b, dir) { if (a == null && b == null) return 0; if (a == null) return 1; if (b == null) return -1; return dir * (a - b); }
+function visible() {
+  var list = modeItems().filter(function (x) {
+    if (S.filter === "tutte") return true;
+    if (S.filter === "attive") return x.status !== "scartata";
+    return x.status === S.filter;
+  });
+  list.sort(function (a, b) {
+    if (S.sort === "ppsm") return cmpVal(calc(a).ppsm, calc(b).ppsm, 1);
+    if (S.sort === "total") return cmpVal(calc(a).total, calc(b).total, 1);
+    if (S.sort === "station") return cmpVal(a.station, b.station, 1);
+    if (S.sort === "rating") return cmpVal(a.rating || null, b.rating || null, -1);
+    return b.created - a.created;
+  });
+  return list;
+}
+function pill(text, t) { return h("span", { class: "pill", "data-t": t || "", text: text }); }
+function thumbOf(it) {
+  var src = it.photo || it.img, box = h("div", { class: "thumb" });
+  if (src) {
+    var im = document.createElement("img");
+    im.alt = ""; im.loading = "lazy"; im.decoding = "async"; im.referrerPolicy = "no-referrer"; im.src = src;
+    im.onerror = function () { box.textContent = ""; box.innerHTML = HOUSE; };
+    box.appendChild(im);
+  } else box.innerHTML = HOUSE;
+  return box;
+}
+function card(it, st) {
+  var c = calc(it), b = budgetFor(it.mode);
+  var priceEl = h("div", { class: "c-price" });
+  if (it.price == null) priceEl.appendChild(h("span", { class: "none", text: "Prezzo da inserire" }));
+  else {
+    priceEl.appendChild(h("span", { text: eur(it.price) }));
+    if (it.mode === "affitto") { priceEl.appendChild(h("small", { text: "/mese" })); if (it.condo) priceEl.appendChild(h("small", { text: "+ " + nf0.format(it.condo) + " spese" })); }
+    else if (it.reno) priceEl.appendChild(h("small", { text: "+ " + eur(it.reno) + " lavori" }));
+  }
+  var meta = [];
+  if (it.sqm) meta.push(nf0.format(it.sqm) + " mq");
+  if (it.rooms) meta.push(it.rooms + (it.rooms === 1 ? " locale" : " locali"));
+  if (it.floor) meta.push("piano " + it.floor);
+  if (c.ppsm != null) meta.push(ppsmTxt(it.mode, c.ppsm));
+  if (it.station != null) meta.push("stazione " + (it.stationApprox ? "~" : "") + nf0.format(it.station) + " min" + (it.stationM != null ? " · " + nf0.format(it.stationM) + " m" : ""));
+  if (it.mode === "vendita" && it.condo) meta.push("cond. " + nf0.format(it.condo) + " €/mese");
+  var pills = [pill(statoLabel(it.status), STATO_T[it.status] || "")];
+  if (b != null && c.total != null) pills.push(c.total > b ? pill("+" + eur(c.total - b) + " sul budget", "bad") : pill("entro budget", "ok"));
+  if (st.median && st.nPp >= 3 && c.ppsm != null && it.status !== "scartata") {
+    var d = (c.ppsm / st.median - 1) * 100;
+    if (Math.abs(d) >= 3) pills.push(pill((d > 0 ? "+" : "−") + Math.abs(Math.round(d)) + "% vs mediana", d > 0 ? "warn" : "ok"));
+  }
+  if (it.rating) pills.push(pill("★ " + it.rating, "warn"));
+  if (it.demo) pills.push(pill("esempio", "mute"));
+  var pick = h("button", {
+    class: "pick", type: "button", role: "checkbox", "aria-checked": S.selected.has(it.id) ? "true" : "false", "aria-label": "Seleziona per confrontare", text: "✓",
+    onclick: function (e) { e.stopPropagation(); togglePick(it.id); }
+  });
+  var el = h("article", { class: "card" + (it.status === "scartata" ? " off" : ""), tabindex: "0", role: "button", "aria-label": it.title }, [
+    thumbOf(it),
+    h("div", { class: "c-main" }, [
+      h("h2", { class: "c-title", text: it.title || "Senza titolo" }),
+      (it.zone || it.commute) ? h("div", { class: "c-zone", text: [it.zone, it.commute].filter(Boolean).join(" · ") }) : null,
+      priceEl,
+      meta.length ? h("div", { class: "c-meta", text: meta.join(" · ") }) : null,
+      h("div", { class: "pills" }, pills)
+    ]),
+    pick
+  ]);
+  el.addEventListener("click", function () { openSheet(it.id, false); });
+  el.addEventListener("keydown", function (e) { if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openSheet(it.id, false); } });
+  return el;
+}
+function renderAll() {
+  var st = stats(), items = modeItems();
+  $("mAff").setAttribute("aria-selected", S.mode === "affitto"); $("mVen").setAttribute("aria-selected", S.mode === "vendita");
+  $("demo").hidden = !S.items.some(function (x) { return x.demo; });
+  var sum = $("sum"); sum.textContent = "";
+  sum.appendChild(h("div", { class: "stat" }, [h("div", { class: "k", text: "Attivi" }), h("div", { class: "v", text: String(st.n) })]));
+  sum.appendChild(h("div", { class: "stat" }, [h("div", { class: "k", text: "Mediana" }), h("div", { class: "v" }, st.median == null ? ["–"] : [ppsmTxt(S.mode, st.median).replace(" €/mq", ""), h("span", { class: "u", text: " €/mq" })])]));
+  sum.appendChild(h("div", { class: "stat" }, [h("div", { class: "k", text: S.mode === "affitto" ? "Fascia al mese" : "Fascia di costo" }), h("div", { class: "v", text: st.min == null ? "–" : (st.min === st.max ? eur(st.min) : nf0.format(Math.round(st.min)) + " – " + eur(st.max)) })]));
+  var chips = $("chips"); chips.textContent = "";
+  var counts = { tutte: items.length, attive: items.filter(function (x) { return x.status !== "scartata"; }).length };
+  STATI.forEach(function (s) { counts[s[0]] = items.filter(function (x) { return x.status === s[0]; }).length; });
+  [["attive", "Attivi"], ["tutte", "Tutti"]].concat(STATI).forEach(function (f) {
+    chips.appendChild(h("button", { class: "fchip", type: "button", "aria-pressed": S.filter === f[0] ? "true" : "false", onclick: function () { S.filter = f[0]; queueSave(); renderAll(); } }, [f[1], h("b", { text: String(counts[f[0]]) })]));
+  });
+  $("sort").value = S.sort;
+  var list = $("list"); list.textContent = "";
+  var vis = visible();
+  vis.forEach(function (it) { list.appendChild(card(it, st)); });
+  var empty = $("empty");
+  empty.hidden = vis.length > 0;
+  empty.textContent = items.length ? "Nessun annuncio con questo filtro." : "Nessun annuncio in " + (S.mode === "affitto" ? "affitto" : "vendita") + ". Incolla il primo link qui sopra.";
+  var bud = budgetFor(S.mode);
+  $("budgetLbl").textContent = S.mode === "affitto" ? "Budget massimo al mese (€)" : "Budget massimo (€)";
+  if (document.activeElement !== $("budgetIn")) $("budgetIn").value = numStr(bud);
+  if (document.activeElement !== $("cityIn")) $("cityIn").value = S.settings.city || "";
+  var n = S.selected.size;
+  $("cmpbar").hidden = n < 1;
+  $("cmpCount").textContent = n + (n === 1 ? " selezionato" : " selezionati");
+  $("cmpGo").disabled = n < 2; $("cmpGo").style.opacity = n < 2 ? ".5" : "1";
+}
+function togglePick(id) {
+  if (S.selected.has(id)) S.selected.delete(id);
+  else { if (S.selected.size >= 4) { say("Puoi confrontare al massimo 4 annunci."); return; } S.selected.add(id); say(""); }
+  renderAll();
+}
+
+/* ---------- scheda dettaglio ---------- */
+function lock(on) { document.body.classList.toggle("lock", on); }
+function shrink(file) {
+  return new Promise(function (res, rej) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var s = Math.min(1, 640 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.65));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("img")); };
+    img.src = url;
+  });
+}
+function touch(it) { it.updated = Date.now(); queueSave(); renderAll(); updateCalc(); }
+function openSheet(id, isNew) {
+  var it = find(id); if (!it) return;
+  SH = { id: id, inputs: {} };
+  var body = $("sheetBody"); body.textContent = "";
+  var hint = h("div", { class: "hint", hidden: true }); SH.hint = hint;
+  body.appendChild(hint);
+
+  function text(k, label, opts) {
+    opts = opts || {};
+    var inp = h("input", { id: "f_" + k, type: opts.type || "text", inputmode: opts.inputmode, placeholder: opts.ph || "", autocomplete: "off", autocapitalize: opts.type === "url" ? "off" : "sentences", value: opts.num ? numStr(it[k]) : (it[k] || "") });
+    inp.addEventListener("input", function () {
+      if (opts.num) it[k] = parseNum(inp.value); else it[k] = inp.value;
+      if (k === "title") it.autoTitle = false;
+      touch(it);
+    });
+    SH.inputs[k] = { el: inp, num: !!opts.num };
+    return h("div", { class: "field" }, [h("label", { for: "f_" + k, text: label }), opts.after ? h("div", { class: "row" }, [inp, opts.after]) : inp]);
+  }
+  function area(k, label, ph) {
+    var ta = h("textarea", { id: "f_" + k, placeholder: ph || "", value: it[k] || "" });
+    ta.addEventListener("input", function () { it[k] = ta.value; touch(it); });
+    return h("div", { class: "field" }, [h("label", { for: "f_" + k, text: label }), ta]);
+  }
+  var aff = it.mode === "affitto";
+  var openLink = h("a", { class: "btn", href: it.url || "#", target: "_blank", rel: "noopener noreferrer", text: "Apri" });
+  if (!it.url) openLink.hidden = true;
+  SH.openLink = openLink;
+  var urlField = text("url", "Link annuncio", { type: "url", ph: "https://…", after: openLink });
+  SH.inputs.url.el.addEventListener("input", function () { openLink.href = it.url || "#"; openLink.hidden = !it.url; });
+
+  body.appendChild(text("title", "Titolo"));
+  body.appendChild(urlField);
+  body.appendChild(text("zone", "Indirizzo (via e numero)", { ph: "es. Via Roma 12" }));
+  body.appendChild(h("div", { class: "grid2" }, [
+    text("price", aff ? "Canone €/mese" : "Prezzo €", { num: 1, inputmode: "decimal" }),
+    text("condo", "Spese condominiali €/mese", { num: 1, inputmode: "decimal" }),
+    text("sqm", "Superficie mq", { num: 1, inputmode: "decimal" }),
+    text("rooms", "Locali", { num: 1, inputmode: "numeric" }),
+    text("floor", "Piano", { ph: "es. 2, T, ultimo" }),
+    text("station", "Stazione, min a piedi", { num: 1, inputmode: "numeric" }),
+    text("stationM", "Stazione, metri", { num: 1, inputmode: "numeric" }),
+    aff ? null : text("reno", "Lavori stimati €", { num: 1, inputmode: "decimal" })
+  ]));
+  var geoBox = h("div", { class: "hint geo" }); SH.geoBox = geoBox; body.appendChild(geoBox);
+  SH.inputs.zone.el.addEventListener("input", function () {
+    clearTimeout(SH.geoT);
+    SH.geoT = setTimeout(function () { var c = find(SH.id); if (c) locate(c, false); }, 1500);
+    paintGeo();
+  });
+  ["station", "stationM"].forEach(function (k) {
+    SH.inputs[k].el.addEventListener("input", function () { it.stationManual = true; it.stationName = ""; it.stationApprox = false; paintGeo(); });
+  });
+  var calcEl = h("div", { class: "calc" }); SH.calc = calcEl; body.appendChild(calcEl);
+
+  if (aff) {
+    var fur = h("select", { id: "f_furnished" }, [["", "–"], ["si", "Sì"], ["parziale", "Parziale"], ["no", "No"]].map(function (o) { return h("option", { value: o[0], text: o[1] }); }));
+    fur.value = it.furnished || "";
+    fur.addEventListener("change", function () { it.furnished = fur.value; touch(it); });
+    body.appendChild(h("div", { class: "grid2" }, [
+      h("div", { class: "field" }, [h("label", { for: "f_furnished", text: "Arredato" }), fur]),
+      text("contract", "Contratto", { ph: "es. 4+4, transitorio" }),
+      text("available", "Libero da", { type: "date" })
+    ]));
+  }
+
+  var sel = h("select", { id: "f_status" }, STATI.map(function (s) { return h("option", { value: s[0], text: s[1] }); }));
+  sel.value = it.status;
+  sel.addEventListener("change", function () { it.status = sel.value; touch(it); });
+  body.appendChild(h("div", { class: "grid2" }, [
+    h("div", { class: "field" }, [h("label", { for: "f_status", text: "Stato" }), sel]),
+    text("visit", "Data visita", { type: "date" })
+  ]));
+
+  var stars = h("div", { class: "stars", role: "group", "aria-label": "Voto" });
+  function paintStars() { Array.prototype.forEach.call(stars.children, function (b, i) { b.className = i < (it.rating || 0) ? "on" : ""; b.setAttribute("aria-pressed", i < (it.rating || 0) ? "true" : "false"); }); }
+  for (var i = 1; i <= 5; i++) (function (v) {
+    stars.appendChild(h("button", { type: "button", "aria-label": v + " su 5", text: "★", onclick: function () { it.rating = it.rating === v ? 0 : v; paintStars(); touch(it); } }));
+  })(i);
+  paintStars();
+  body.appendChild(h("div", { class: "field" }, [h("span", { class: "lbl", text: "Voto" }), stars]));
+
+  var tel = h("a", { class: "btn", href: it.phone ? "tel:" + it.phone.replace(/[^\d+]/g, "") : "#", text: "Chiama" });
+  if (!it.phone) tel.hidden = true;
+  var phoneField = text("phone", "Telefono", { type: "tel", inputmode: "tel", after: tel });
+  SH.inputs.phone.el.addEventListener("input", function () { tel.hidden = !it.phone; tel.href = "tel:" + (it.phone || "").replace(/[^\d+]/g, ""); });
+  body.appendChild(h("div", { class: "grid2" }, [text("contact", "Contatto o agenzia"), phoneField]));
+
+  body.appendChild(area("pros", "Pro (uno per riga)", "es. luminoso"));
+  body.appendChild(area("cons", "Contro (uno per riga)", "es. niente ascensore"));
+  body.appendChild(area("notes", "Note"));
+
+  var photoBox = h("div", { class: "photo-row" });
+  function paintPhoto() {
+    photoBox.textContent = "";
+    var src = it.photo || it.img;
+    if (src) { var im = h("img", { alt: "", referrerpolicy: "no-referrer", src: src }); im.onerror = function () { im.remove(); }; photoBox.appendChild(im); }
+    photoBox.appendChild(h("label", { class: "btn", for: "photoIn", text: it.photo ? "Cambia foto" : "Aggiungi foto" }));
+    if (it.photo) photoBox.appendChild(h("button", { class: "btn", type: "button", text: "Rimuovi foto", onclick: function () { it.photo = ""; save(); paintPhoto(); renderAll(); } }));
+  }
+  var photoIn = h("input", { class: "hidden-file", id: "photoIn", type: "file", accept: "image/*" });
+  photoIn.addEventListener("change", function () {
+    var f = photoIn.files && photoIn.files[0]; if (!f) return;
+    shrink(f).then(function (data) {
+      var old = it.photo; it.photo = data;
+      if (!save()) { it.photo = old; setHint("Memoria piena: non riesco a salvare la foto.", "warn"); }
+      paintPhoto(); renderAll();
+    }, function () { setHint("Non riesco a leggere questa immagine.", "warn"); });
+    photoIn.value = "";
+  });
+  paintPhoto();
+  body.appendChild(h("div", { class: "field" }, [h("span", { class: "lbl", text: "Foto" }), photoBox, photoIn]));
+
+  var del = h("button", { class: "danger", type: "button", text: "Elimina annuncio" }), armed = false, tm;
+  del.addEventListener("click", function () {
+    if (!armed) { armed = true; del.textContent = "Tocca di nuovo per eliminare"; tm = setTimeout(function () { armed = false; del.textContent = "Elimina annuncio"; }, 4000); return; }
+    clearTimeout(tm);
+    S.items = S.items.filter(function (x) { return x.id !== it.id; }); S.selected.delete(it.id);
+    save(); closeSheet();
+  });
+  body.appendChild(del);
+
+  SH.paintPhoto = paintPhoto;
+  $("sheetWrap").hidden = false; lock(true);
+  $("sheetWrap").querySelector(".sheet").scrollTop = 0;
+  updateCalc(); syncSheet();
+  if (isNew && SH.inputs.price) SH.inputs.price.el.focus();
+}
+function setHint(text, t, retry) {
+  if (!SH) return;
+  var el = SH.hint; el.textContent = ""; el.hidden = !text; if (!text) return;
+  el.setAttribute("data-t", t || "");
+  el.appendChild(h("span", { text: text }));
+  if (retry) el.appendChild(h("button", { type: "button", text: "Riprova", onclick: function () { var it = find(SH.id); if (it) { enrich(it); findCoords(it); syncSheet(); } } }));
+}
+function syncSheet() {
+  if (!SH) return;
+  var it = find(SH.id); if (!it) return;
+  Object.keys(SH.inputs).forEach(function (k) {
+    var o = SH.inputs[k], el = o.el;
+    if (document.activeElement === el && el.value !== "") return;
+    var want = o.num ? numStr(it[k]) : (it[k] || "");
+    if (el.value === "" || (k === "title" && it.autoTitle) || k === "station" || k === "stationM") el.value = want;
+  });
+  if (SH.openLink) { SH.openLink.href = it.url || "#"; SH.openLink.hidden = !it.url; }
+  if (SH.paintPhoto) SH.paintPhoto();
+  if (it.meta === "loading") setHint("Leggo l'annuncio…", "");
+  else if (it.meta === "fail") setHint("Non riesco a leggere l'annuncio: i portali spesso lo bloccano. Compila i dati a mano.", "warn", true);
+  else if (it.meta === "ok") setHint("Ho letto titolo e immagine. Controlla prezzo e superficie.", "");
+  else setHint("");
+  paintGeo();
+  updateCalc();
+}
+function updateCalc() {
+  if (!SH) return;
+  var it = find(SH.id); if (!it) return;
+  var c = calc(it), b = budgetFor(it.mode), rows = [];
+  rows.push([it.mode === "affitto" ? "Totale al mese" : "Costo stimato", eur(c.total)]);
+  rows.push(["Al metro quadro", ppsmTxt(it.mode, c.ppsm)]);
+  if (it.mode === "vendita" && it.condo) rows.push(["Condominio all'anno", eur(it.condo * 12)]);
+  if (b != null && c.total != null) rows.push(["Rispetto al budget", (c.total > b ? "+" : "−") + eur(Math.abs(c.total - b))]);
+  var st = stats();
+  if (st.median && c.ppsm != null && st.nPp >= 3) { var d = (c.ppsm / st.median - 1) * 100; rows.push(["Rispetto alla tua mediana", (d > 0 ? "+" : "−") + Math.abs(Math.round(d)) + "%"]); }
+  SH.calc.textContent = "";
+  rows.forEach(function (r) { SH.calc.appendChild(h("div", null, [h("span", { text: r[0] }), h("span", { text: r[1] })])); });
+}
+function closeSheet() { SH = null; $("sheetWrap").hidden = true; lock(false); renderAll(); }
+
+/* ---------- confronto ---------- */
+function lines(s) { var a = String(s || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean); return a.length ? h("ul", null, a.map(function (x) { return h("li", { text: x }); })) : "–"; }
+function openCompare() {
+  var items = Array.from(S.selected).map(find).filter(Boolean);
+  if (items.length < 2) return;
+  var aff = S.mode === "affitto";
+  var cs = items.map(calc);
+  function best(vals, dir) {
+    var v = vals.filter(function (x) { return x != null; });
+    if (v.length < 2) return null;
+    var m = dir < 0 ? Math.min.apply(null, v) : Math.max.apply(null, v);
+    return v.every(function (x) { return x === m; }) ? null : m;
+  }
+  var rows = [
+    ["Foto", function (it) {
+      var s = it.photo || it.img; if (!s) return "–";
+      var im = h("img", { alt: "", referrerpolicy: "no-referrer", src: s });
+      im.onerror = function () { im.replaceWith(document.createTextNode("–")); };
+      return im;
+    }],
+    ["Stato", function (it) { return statoLabel(it.status); }],
+    ["Zona", function (it) { return it.zone || "–"; }],
+    ["Stazione", function (it) { return it.station != null ? (it.stationApprox ? "~" : "") + nf0.format(it.station) + " min a piedi" + (it.stationM != null ? " · " + nf0.format(it.stationM) + " m" : "") : "–"; }, function (it) { return it.station; }, -1],
+    [aff ? "Canone" : "Prezzo", function (it) { return eur(it.price); }, function (it, i) { return it.price; }, -1],
+    ["Spese condominiali", function (it) { return it.condo != null ? eur(it.condo) + "/mese" : "–"; }, function (it) { return it.condo; }, -1],
+    aff ? null : ["Lavori stimati", function (it) { return it.reno ? eur(it.reno) : "–"; }],
+    [aff ? "Totale al mese" : "Costo stimato", function (it, i) { return eur(cs[i].total); }, function (it, i) { return cs[i].total; }, -1],
+    ["Al mq", function (it, i) { return ppsmTxt(it.mode, cs[i].ppsm); }, function (it, i) { return cs[i].ppsm; }, -1],
+    ["Superficie", function (it) { return it.sqm ? nf0.format(it.sqm) + " mq" : "–"; }, function (it) { return it.sqm; }, 1],
+    ["Locali", function (it) { return it.rooms || "–"; }],
+    ["Piano", function (it) { return it.floor || "–"; }],
+    aff ? ["Arredato", function (it) { return { si: "Sì", parziale: "Parziale", no: "No" }[it.furnished] || "–"; }] : null,
+    aff ? ["Contratto", function (it) { return it.contract || "–"; }] : null,
+    ["Voto", function (it) { return it.rating ? "★".repeat(it.rating) : "–"; }, function (it) { return it.rating || null; }, 1],
+    ["Pro", function (it) { return lines(it.pros); }],
+    ["Contro", function (it) { return lines(it.cons); }]
+  ].filter(Boolean);
+  var head = h("tr", null, [h("th", { scope: "col", text: "" })].concat(items.map(function (it) {
+    return h("th", { scope: "col" }, [it.title || "Senza titolo", h("button", { class: "x", type: "button", text: "Togli", onclick: function () { S.selected.delete(it.id); if (S.selected.size < 2) closeCompare(); else openCompare(); renderAll(); } })]);
+  })));
+  var body = rows.map(function (r) {
+    var vals = r[2] ? items.map(function (it, i) { return r[2](it, i); }) : null;
+    var m = vals ? best(vals, r[3]) : null;
+    return h("tr", null, [h("th", { scope: "row", text: r[0] })].concat(items.map(function (it, i) {
+      var out = r[1](it, i);
+      return h("td", { class: (vals ? "num" : "") + (m != null && vals[i] === m ? " best" : "") }, [out]);
+    })));
+  });
+  var t = h("table", { class: "cmp" }, [h("thead", null, [head]), h("tbody", null, body)]);
+  var box = $("cmpBody"); box.textContent = ""; box.appendChild(t);
+  $("cmpWrap").hidden = false; lock(true);
+}
+function closeCompare() { $("cmpWrap").hidden = true; lock(!!SH); }
+
+/* ---------- eventi ---------- */
+$("addForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  var inp = $("url"), raw = inp.value.trim(); if (!raw) return;
+  var u = parseUrl(raw), it = newItem(u, raw);
+  S.items.unshift(it); inp.value = "";
+  if (S.mode !== it.mode) { S.mode = it.mode; S.selected.clear(); }
+  S.filter = "attive"; save(); renderAll(); openSheet(it.id, true);
+  if (u) { enrich(it); findCoords(it); }
+});
+[$("mAff"), $("mVen")].forEach(function (b) {
+  b.addEventListener("click", function () { if (S.mode === b.dataset.mode) return; S.mode = b.dataset.mode; S.selected.clear(); S.filter = "attive"; queueSave(); renderAll(); });
+});
+$("sort").addEventListener("change", function () { S.sort = $("sort").value; queueSave(); renderAll(); });
+$("clearDemo").addEventListener("click", function () {
+  S.items = S.items.filter(function (x) { return !x.demo; }); S.selected.clear(); save(); renderAll();
+});
+$("budgetIn").addEventListener("input", function () {
+  S.settings.budget[S.mode] = parseNum($("budgetIn").value); queueSave();
+  var cur = document.activeElement; renderAll(); if (cur === $("budgetIn")) $("budgetIn").focus();
+});
+$("cityIn").addEventListener("input", function () { S.settings.city = $("cityIn").value.trim(); queueSave(); });
+$("cmpGo").addEventListener("click", openCompare);
+$("cmpClear").addEventListener("click", function () { S.selected.clear(); renderAll(); });
+$("sheetClose").addEventListener("click", closeSheet);
+$("sheetBack").addEventListener("click", closeSheet);
+$("cmpClose").addEventListener("click", closeCompare);
+$("cmpBack").addEventListener("click", closeCompare);
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (!$("cmpWrap").hidden) closeCompare(); else if (!$("sheetWrap").hidden) closeSheet(); } });
+window.addEventListener("pagehide", function () { clearTimeout(saveT); save(); });
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") { clearTimeout(saveT); save(); } });
+
+$("exportBtn").addEventListener("click", function () {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); };
+  var name = "case-backup-" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + ".json";
+  var blob = new Blob([JSON.stringify({ app: "casa", v: 1, items: S.items, settings: S.settings }, null, 2)], { type: "application/json" });
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  say("Backup creato: " + S.items.length + " annunci.");
+});
+$("importFile").addEventListener("change", function (e) {
+  var file = e.target.files && e.target.files[0]; if (!file) return;
+  var r = new FileReader();
+  r.onload = function () {
+    try {
+      var d = JSON.parse(r.result), list = Array.isArray(d) ? d : d.items;
+      if (!Array.isArray(list)) throw new Error("formato");
+      var have = {}; S.items.forEach(function (x) { have[x.id] = 1; });
+      var add = list.filter(function (x) { return x && x.id && x.title && (x.mode === "affitto" || x.mode === "vendita") && !have[x.id]; });
+      S.items = S.items.concat(add); save(); renderAll(); say("Ripristinati " + add.length + " annunci.");
+    } catch (err) { say("Il file non è un backup valido."); }
+    e.target.value = "";
+  };
+  r.readAsText(file);
+});
+
+load(); renderAll();
+S.items.filter(function (x) { return x.meta === "loading" && x.url; }).forEach(function (x, i) { setTimeout(function () { enrich(x); }, i * 700); });
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+})();
+</script>
+</body>
+</html>
