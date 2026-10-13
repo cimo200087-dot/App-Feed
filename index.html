@@ -104,6 +104,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .play::before { content: ""; border-left: 14px solid #fff; border-block: 8px solid transparent; margin-left: 3px; }
 .dur { position: absolute; z-index: 1; right: 8px; bottom: 8px; font-family: var(--font-mono); font-size: 11px; background: rgba(0,0,0,.7); color: #fff; padding: 2px 6px; border-radius: 5px; }
 
+.media.has-img { background: var(--chip); }
+.media.has-img::after { display: none; }
+.media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
 .note { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .note .body { padding: 16px 14px 14px; }
 .note .title { font-size: 21px; font-weight: 800; line-height: 1.08; }
@@ -202,7 +206,56 @@ function makeItem(u) {
   var kind = "article";
   if (/youtube\.com|youtu\.be|vimeo\.com/.test(host)) kind = "video";
   else if (/\.(jpe?g|png|webp|gif)$/i.test(u.pathname)) kind = "photo";
-  return { id: "u" + Date.now(), kind: kind, title: title, domain: host, excerpt: "", a: pal[0], b: pal[1], ratio: RATIOS[h % RATIOS.length], url: u.href };
+  var direct = kind === "photo";
+  return { id: "u" + Date.now(), kind: kind, title: title, domain: host, excerpt: "", a: pal[0], b: pal[1], ratio: kind === "video" ? "16/9" : RATIOS[h % RATIOS.length], url: u.href, img: direct ? u.href : "", status: direct ? "ok" : "loading" };
+}
+
+function srcLabel(it) {
+  return (it.author ? it.author + " · " : "") + it.domain + (it.status === "loading" ? " · carico…" : it.status === "fail" ? " · senza anteprima" : "");
+}
+
+var inflight = {};
+function fetchJSON(url) {
+  var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 9000);
+  return fetch(url, { signal: ctl.signal }).then(function (r) {
+    clearTimeout(t); if (!r.ok) throw new Error("http " + r.status); return r.json();
+  }, function (e) { clearTimeout(t); throw e; });
+}
+function viaOembed(u) {
+  var h = u.hostname.replace(/^www\./, ""), ep = null;
+  if (/(^|\.)youtube\.com$|^youtu\.be$/.test(h)) ep = "https://www.youtube.com/oembed?format=json&url=";
+  else if (/(^|\.)vimeo\.com$/.test(h)) ep = "https://vimeo.com/api/oembed.json?url=";
+  if (!ep) return Promise.reject(new Error("no"));
+  return fetchJSON(ep + encodeURIComponent(u.href)).then(function (d) {
+    if (!d || !d.title) throw new Error("vuoto");
+    return { title: d.title, author: d.author_name || "", img: d.thumbnail_url || "", w: d.thumbnail_width, h: d.thumbnail_height };
+  });
+}
+function viaMicrolink(u) {
+  return fetchJSON("https://api.microlink.io/?url=" + encodeURIComponent(u.href)).then(function (r) {
+    var d = r && r.data;
+    if (!d || r.status !== "success" || !(d.title || d.image)) throw new Error("vuoto");
+    return { title: d.title || "", desc: d.description || "", author: d.publisher || "", img: (d.image && d.image.url) || "", w: d.image && d.image.width, h: d.image && d.image.height };
+  });
+}
+function findItem(id) { return items.filter(function (x) { return x.id === id; })[0]; }
+function enrich(it) {
+  if (inflight[it.id]) return;
+  var u = parseUrl(it.url); if (!u) return;
+  inflight[it.id] = 1;
+  viaOembed(u).catch(function () { return viaMicrolink(u); }).then(function (m) {
+    var cur = findItem(it.id); if (!cur) return;
+    if (m.title) cur.title = m.title;
+    if (m.author) cur.author = m.author;
+    if (cur.kind === "article" && m.desc) cur.excerpt = m.desc.length > 150 ? m.desc.slice(0, 147) + "…" : m.desc;
+    if (m.img) {
+      cur.img = m.img;
+      if (cur.kind !== "video" && m.w && m.h) cur.ratio = Math.min(2, Math.max(0.7, m.w / m.h)).toFixed(3);
+    }
+    cur.status = "ok";
+  }, function () {
+    var cur = findItem(it.id); if (cur) cur.status = "fail";
+  }).then(function () { delete inflight[it.id]; save(); render(); });
 }
 
 function card(it) {
@@ -217,13 +270,22 @@ function card(it) {
     nb.appendChild(el("div", "src")).appendChild(el("b", null, "nota tua"));
     wrap.appendChild(nb);
   } else {
-    var m = el("div", "media");
-    m.style.setProperty("--a", it.a || "#444"); m.style.setProperty("--b", it.b || "#888");
-    m.style.aspectRatio = it.ratio || "16/10";
-    if (it.kind === "video") { m.appendChild(el("span", "play")); if (it.dur) m.appendChild(el("span", "dur", it.dur)); }
-    wrap.appendChild(m);
+    if (it.img || it.demo || it.kind === "video" || it.kind === "photo") {
+      var m = el("div", "media");
+      m.style.setProperty("--a", it.a || "#444"); m.style.setProperty("--b", it.b || "#888");
+      m.style.aspectRatio = it.ratio || "16/10";
+      if (it.img) {
+        m.classList.add("has-img");
+        var im = document.createElement("img");
+        im.alt = ""; im.loading = "lazy"; im.decoding = "async"; im.referrerPolicy = "no-referrer"; im.src = it.img;
+        im.onerror = function () { m.classList.remove("has-img"); im.remove(); };
+        m.appendChild(im);
+      }
+      if (it.kind === "video") { m.appendChild(el("span", "play")); if (it.dur) m.appendChild(el("span", "dur", it.dur)); }
+      wrap.appendChild(m);
+    }
     var b = el("div", "body");
-    b.appendChild(el("div", "src")).appendChild(el("b", null, it.domain));
+    b.appendChild(el("div", "src")).appendChild(el("b", null, srcLabel(it)));
     b.appendChild(el("h2", "title", it.title));
     if (it.excerpt) b.appendChild(el("p", "excerpt", it.excerpt));
     wrap.appendChild(b);
@@ -245,8 +307,9 @@ document.getElementById("addForm").addEventListener("submit", function (e) {
   e.preventDefault();
   var inp = document.getElementById("url"), u = parseUrl(inp.value);
   if (!u) { inp.value = ""; inp.placeholder = "Link non valido, riprova"; return; }
-  items.unshift(makeItem(u)); inp.value = ""; inp.placeholder = "Incolla un link";
+  var ni = makeItem(u); items.unshift(ni); inp.value = ""; inp.placeholder = "Incolla un link";
   save(); render(); say(""); window.scrollTo({ top: 0 });
+  if (ni.status === "loading") enrich(ni);
 });
 document.getElementById("clearDemo").addEventListener("click", function () {
   items = items.filter(function (x) { return !x.demo; }); save(); render();
@@ -280,6 +343,8 @@ document.getElementById("importFile").addEventListener("change", function (e) {
 });
 
 load(); render();
+items.filter(function (x) { return !x.demo && (x.kind === "article" || x.kind === "video") && x.status !== "ok"; })
+  .forEach(function (x, i) { setTimeout(function () { enrich(x); }, i * 700); });
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 </script>
 </body>
