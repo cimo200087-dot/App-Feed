@@ -182,6 +182,50 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .check { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 16px; }
 .check input { width: 22px; height: 22px; accent-color: var(--accent); }
 .status { font-size: 13px; color: var(--muted); min-height: 1.3em; margin: 0; }
+
+.viewbar{display:flex;flex-direction:column;gap:0}
+.back{border:0;background:none;color:var(--accent);font-weight:600;font-size:17px;min-height:44px;padding:0;text-align:left;align-self:flex-start}
+.viewbar h2{font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0 0 2px}
+.lbl{display:flex;align-items:center;justify-content:space-between;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 2px 8px}
+.lbl button{border:0;background:none;color:var(--accent);font-size:15px;font-weight:600;letter-spacing:0;text-transform:none;min-height:44px;padding:0 4px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (min-width:720px){.tiles{grid-template-columns:repeat(4,1fr);gap:14px}}
+.tile{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;min-height:112px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.tile:active{transform:scale(.98)}
+.tile .ic{font-size:28px;line-height:1}
+.tile strong{font-family:var(--font-display);font-size:19px;line-height:1.1;font-weight:600;display:block;overflow-wrap:anywhere}
+.tile span{font-size:13px;color:var(--muted)}
+.tile.wide{grid-column:1/-1;min-height:80px;flex-direction:row;align-items:center;background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tile.wide span{color:var(--bg);opacity:.7}
+.tile.wide .big{font-family:var(--font-display);font-weight:800;font-size:32px}
+.tile.new{grid-column:1/-1;min-height:72px;align-items:center;justify-content:center;border:2px dashed var(--muted);background:none;font-weight:600;font-size:18px;color:var(--ink)}
+.fchip{display:none}
+.srow{flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+.srow input[type=text]{flex:1 1 100%}
+.srow .n{flex:1;text-align:left;min-width:0;font-size:13px}
+.srow .n::after{content:' link'}
+.tags{width:100%;margin:0;padding:0 12px 12px;min-height:44px}
+.tag{font-size:13px;padding:7px 12px;font-weight:600}
+.tag.add{font-size:14px;padding:10px 16px}
+.rm{width:38px;height:38px;font-size:20px}
+.sheet-head button{min-height:44px;padding:0 22px}
+.opt{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:8px;font-weight:600;font-size:17px;min-height:60px;background:var(--surface)}
+.opt.on{background:var(--chip);border-color:var(--accent)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.ck{flex:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--muted);display:grid;place-items:center;color:var(--accent-ink);font-size:18px}
+.opt.on .ck{background:var(--accent);border-color:var(--accent)}
+.opt.on .ck::after{content:"✓"}
+.opt.newopt{border-style:dashed}
+.bigbtn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:14px;min-height:56px;font-size:17px;font-weight:700;width:100%;margin-top:6px}
+.row input{padding:15px 14px}
+.primary{min-height:52px;padding:0 20px;font-size:16px}
+.ib{width:46px;height:46px}
+.danger{min-height:46px}
+.srow .danger{height:46px;padding:0 12px}
+.srow input[type=text]{padding:14px 12px}
+.sugg button{padding:12px 16px;font-size:15px}
+.add button{min-height:50px}
+.add input{padding:15px 14px}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -194,7 +238,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
       <button type="submit">Aggiungi</button>
     </form>
     <div class="notice" id="notice" role="status" hidden></div>
-    <div class="chips" id="chips" aria-label="Sezioni"></div>
+    <div class="viewbar" id="viewbar" hidden><button type="button" class="back" id="backBtn">‹ Tutte le sezioni</button><h2 id="viewTitle"></h2></div>
   </header>
 
   <div class="banner" id="demo" hidden>
@@ -206,6 +250,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
     <button type="button" id="mergeDupes">Unisci</button>
   </div>
 
+  <section id="home" hidden></section>
   <main class="feed" id="feed"></main>
   <p class="empty" id="empty" hidden></p>
 
@@ -248,7 +293,7 @@ var PALETTES = [["#1f6f8b","#e8b04a"],["#5c7a54","#e9e3c8"],["#6b3fa0","#f2a1c4"
 var RATIOS = ["16/10","4/5","1/1","3/2","16/9"];
 var SUGGESTIONS = ["Annunci case vendita", "Annunci case affitto", "Lavoro"];
 
-var items = [], sections = [], view = "all";
+var items = [], sections = [], view = "home";
 
 function $(id) { return document.getElementById(id); }
 function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -278,7 +323,7 @@ function normalize() {
     if (!Array.isArray(x.sections)) x.sections = [];
     x.sections = x.sections.filter(function (id, i, a) { return ids[id] && a.indexOf(id) === i; });
   });
-  if (view !== "all" && !ids[view]) view = "all";
+  if (view !== "home" && view !== "all" && view !== "none" && !ids[view]) view = "home";
 }
 function load() {
   try {
@@ -288,7 +333,6 @@ function load() {
       if (d && Array.isArray(d.items)) {
         items = d.items;
         if (Array.isArray(d.sections)) sections = d.sections.filter(function (s) { return s && s.id && typeof s.name === "string"; });
-        if (typeof d.view === "string") view = d.view;
         normalize(); return;
       }
     }
@@ -302,7 +346,22 @@ function save() {
 }
 function findItem(id) { return items.filter(function (x) { return x.id === id; })[0]; }
 function secName(id) { for (var i = 0; i < sections.length; i++) if (sections[i].id === id) return sections[i].name; return ""; }
-function inView(x) { return view === "all" || x.sections.indexOf(view) > -1; }
+function isSec(v) { return v !== "home" && v !== "all" && v !== "none"; }
+function inView(x) {
+  if (view === "home") return false;
+  if (view === "all") return true;
+  if (view === "none") return !x.sections.length;
+  return x.sections.indexOf(view) > -1;
+}
+function iconFor(n) {
+  n = n.toLowerCase();
+  if (/affitt/.test(n)) return "🔑";
+  if (/cas|vendit|immobil|annunc/.test(n)) return "🏠";
+  if (/lavor|job|carrier/.test(n)) return "💼";
+  if (/vide|film/.test(n)) return "🎬";
+  if (/foto|imm/.test(n)) return "🖼️";
+  return "📁";
+}
 
 /* ---------- doppioni ---------- */
 var TRACK = /^(utm_|fbclid|gclid|igshid|mc_|ref$|ref_|si$|feature$|pp$|cmpid|spm$|scid|_ga|yclid|msclkid)/i;
@@ -368,18 +427,19 @@ function flash(it) {
   return false;
 }
 function reveal(it) {
-  if (!inView(it)) { view = "all"; save(); render(); }
+  if (!inView(it)) { view = "all"; render(); }
   flash(it);
 }
 function dupActions(ex) {
   var acts = [];
-  if (view !== "all" && ex.sections.indexOf(view) < 0) {
+  if (isSec(view) && ex.sections.indexOf(view) < 0) {
     var target = view;
     acts.push({ label: "Aggiungi a «" + secName(target) + "»", fn: function () {
       ex.sections.push(target); save(); render();
       showNotice("Aggiunto a «" + secName(target) + "». Nessun doppione creato.", "ok", [{ label: "Mostra", fn: function () { reveal(ex); } }]);
     } });
   }
+  if (!isSec(view) && sections.length) acts.push({ label: "Sezioni", fn: function () { openItemSheet(ex.id); } });
   acts.push({ label: "Mostra", fn: function () { reveal(ex); } });
   return acts;
 }
@@ -470,8 +530,8 @@ function enrich(it) {
 function card(it) {
   var c = el("article", "card " + it.kind); c.setAttribute("data-id", it.id);
   var rm = el("button", "rm", "×"); rm.type = "button";
-  rm.setAttribute("aria-label", view === "all" ? "Elimina dal feed" : "Togli da questa sezione");
-  rm.onclick = function () { if (view === "all") deleteItem(it.id); else removeFromSection(it.id, view); };
+  rm.setAttribute("aria-label", isSec(view) ? "Togli da questa sezione" : "Elimina dal feed");
+  rm.onclick = function () { if (isSec(view)) removeFromSection(it.id, view); else deleteItem(it.id); };
   var wrap = it.url && it.url !== "#" ? el("a") : el("div");
   if (wrap.tagName === "A") { wrap.href = it.url; wrap.target = "_blank"; wrap.rel = "noopener noreferrer"; }
   if (it.kind === "note") {
@@ -504,38 +564,52 @@ function card(it) {
   if (sections.length) {
     var names = it.sections.map(secName).filter(Boolean);
     var tags = h("button", { class: "tags", type: "button", "aria-label": "Sezioni di questo link", onclick: function () { openItemSheet(it.id); } },
-      names.length ? names.map(function (n) { return h("span", { class: "tag", text: n }); }) : [h("span", { class: "tag add", text: "+ sezione" })]);
+      names.length ? names.map(function (n) { return h("span", { class: "tag", text: n }); }) : [h("span", { class: "tag add", text: "＋ Sezioni" })]);
     c.appendChild(tags);
   }
   return c;
 }
-function chip(id, label, n) {
-  return h("button", { class: "fchip", type: "button", "aria-pressed": view === id ? "true" : "false", onclick: function () { view = id; hideNotice(); save(); render(); } }, [label, h("b", { text: String(n) })]);
+function go(v) { view = v; hideNotice(); render(); window.scrollTo({ top: 0 }); }
+function tile(cls, icon, name, sub, fn, big) {
+  var kids = big != null
+    ? [h("div", null, [h("strong", { text: name }), h("span", { text: sub })]), h("span", { class: "big", text: String(big) })]
+    : [icon ? h("span", { class: "ic", text: icon }) : null, h("div", null, [h("strong", { text: name }), sub ? h("span", { text: sub }) : null])];
+  return h("button", { class: "tile " + cls, type: "button", onclick: fn }, kids);
 }
-function renderChips() {
-  var c = $("chips"); c.textContent = "";
-  c.appendChild(chip("all", "Generale", items.length));
+function nLink(n) { return n + (n === 1 ? " link" : " link"); }
+function renderHome() {
+  var hm = $("home"); hm.textContent = "";
+  hm.appendChild(h("div", { class: "lbl" }, [h("span", { text: "Le tue sezioni" }), sections.length ? h("button", { type: "button", text: "Gestisci", onclick: function () { openManager(); } }) : null]));
+  var g = h("div", { class: "tiles" });
   sections.forEach(function (s) {
-    c.appendChild(chip(s.id, s.name, items.filter(function (x) { return x.sections.indexOf(s.id) > -1; }).length));
+    var n = items.filter(function (x) { return x.sections.indexOf(s.id) > -1; }).length;
+    g.appendChild(tile("", iconFor(s.name), s.name, nLink(n), function () { go(s.id); }));
   });
-  c.appendChild(h("button", { class: "fchip plus", type: "button", text: "+ Sezioni", onclick: openManager }));
-  var act = c.querySelector('[aria-pressed="true"]');
-  if (act && view !== "all") c.scrollLeft = Math.max(0, act.offsetLeft - 40);
+  var un = items.filter(function (x) { return !x.sections.length; }).length;
+  if (sections.length) g.appendChild(tile("", "📥", "Da smistare", nLink(un), function () { go("none"); }));
+  g.appendChild(tile("new", "", "＋ Nuova sezione", "", function () { openManager(true); }));
+  g.appendChild(tile("wide", "", "Tutti i link", "Generale", function () { go("all"); }, items.length));
+  hm.appendChild(g);
 }
 function render() {
-  renderChips();
+  var home = view === "home";
+  $("home").hidden = !home; $("feed").hidden = home; $("viewbar").hidden = home;
+  if (home) renderHome();
   var f = $("feed"); f.textContent = "";
   var vis = items.filter(inView);
   vis.forEach(function (it) { f.appendChild(card(it)); });
   var empty = $("empty");
-  empty.hidden = vis.length > 0;
-  empty.textContent = view === "all" ? "Il feed è vuoto. Incolla il primo link qui sopra." : "Nessun link in «" + secName(view) + "». Incolla un link qui sopra, oppure aggiungi qui quelli già salvati con «+ sezione» sotto ogni scheda in Generale.";
-  $("url").placeholder = view === "all" ? "Incolla un link" : "Incolla un link in «" + secName(view) + "»";
+  empty.hidden = home || vis.length > 0;
+  if (view === "all") empty.textContent = "Il feed è vuoto. Incolla il primo link qui sopra.";
+  else if (view === "none") empty.textContent = "Tutti i link sono in una sezione.";
+  else if (!home) empty.textContent = "Nessun link in «" + secName(view) + "». Incolla un link qui sopra, oppure apri Tutti i link e usa «＋ Sezioni» sotto una scheda.";
+  $("viewTitle").textContent = view === "all" ? "Tutti i link" : view === "none" ? "Da smistare" : isSec(view) ? secName(view) : "";
+  $("url").placeholder = isSec(view) ? "Incolla un link in «" + secName(view) + "»" : "Incolla un link";
   $("demo").hidden = !items.some(function (x) { return x.demo; });
-  var dg = dupeGroups(), extra = dg.reduce(function (n, g) { return n + g.length - 1; }, 0);
+  var dg = dupeGroups(), extra = dg.reduce(function (n, g2) { return n + g2.length - 1; }, 0);
   $("dupes").hidden = !extra;
   if (extra) $("dupesText").textContent = extra + (extra === 1 ? " link è salvato due volte." : " link sono salvati più volte.");
-  var n = vis.length;
+  var n = home ? items.length : vis.length;
   $("count").textContent = n + (n === 1 ? " elemento" : " elementi");
 }
 
@@ -555,7 +629,7 @@ function createSection(name) {
   for (var i = 0; i < sections.length; i++) if (sections[i].name.toLowerCase() === low) return { err: "Esiste già una sezione con questo nome." };
   var s = { id: uid("s"), name: name }; sections.push(s); save(); return { s: s };
 }
-function openManager() {
+function openManager(focusNew) {
   openSheet("Sezioni", function (b) {
     var status = h("p", { class: "status", role: "status" });
     var inp = h("input", { id: "newSec", type: "text", placeholder: "Nome della nuova sezione", maxlength: "40", autocomplete: "off" });
@@ -565,8 +639,10 @@ function openManager() {
       openManager();
     } }, [inp, h("button", { class: "primary", type: "submit", text: "Crea" })]);
     b.appendChild(form);
-    if (!sections.length) {
-      b.appendChild(h("div", { class: "sugg" }, [h("span", { text: "Esempi:" })].concat(SUGGESTIONS.map(function (n) {
+    if (focusNew) setTimeout(function () { inp.focus(); }, 80);
+    var left = SUGGESTIONS.filter(function (n) { return !sections.some(function (s) { return s.name.toLowerCase() === n.toLowerCase(); }); });
+    if (left.length) {
+      b.appendChild(h("div", { class: "sugg" }, [h("span", { text: "Suggerite:" })].concat(left.map(function (n) {
         return h("button", { type: "button", text: n, onclick: function () { createSection(n); openManager(); } });
       }))));
     }
@@ -597,24 +673,31 @@ function openManager() {
 }
 function openItemSheet(id) {
   var it = findItem(id); if (!it) return;
-  openSheet("Sezioni del link", function (b) {
+  openSheet("Dove va questo link?", function (b) {
     b.appendChild(h("p", { class: "sub", text: it.title }));
-    if (!sections.length) {
-      b.appendChild(h("p", { class: "sub", text: "Non hai ancora creato sezioni." }));
-      b.appendChild(h("button", { class: "primary", type: "button", style: "padding:12px 16px", text: "Crea sezioni", onclick: openManager }));
-    }
     sections.forEach(function (s) {
       var cb = h("input", { type: "checkbox", id: "cb_" + s.id });
       cb.checked = it.sections.indexOf(s.id) > -1;
+      var row = h("label", { class: "opt" + (cb.checked ? " on" : ""), for: "cb_" + s.id }, [cb, h("span", { class: "ck" }), h("span", { text: s.name })]);
       cb.addEventListener("change", function () {
         var has = it.sections.indexOf(s.id) > -1;
         if (cb.checked && !has) it.sections.push(s.id);
         if (!cb.checked && has) it.sections = it.sections.filter(function (x) { return x !== s.id; });
-        save(); renderChips();
+        row.classList.toggle("on", cb.checked); save();
       });
-      b.appendChild(h("label", { class: "check", for: "cb_" + s.id }, [cb, h("span", { text: s.name })]));
+      b.appendChild(row);
     });
-    if (sections.length) b.appendChild(h("p", { class: "sub", text: "Generale contiene sempre tutti i link." }));
+    var status = h("p", { class: "status", role: "status" });
+    var ninp = h("input", { type: "text", placeholder: "Nome della nuova sezione", maxlength: "40", autocomplete: "off" });
+    var nform = h("form", { class: "row", hidden: true, onsubmit: function (e) {
+      e.preventDefault(); var r = createSection(ninp.value);
+      if (r.err) { status.textContent = r.err; return; }
+      it.sections.push(r.s.id); save(); openItemSheet(id);
+    } }, [ninp, h("button", { class: "primary", type: "submit", text: "Crea" })]);
+    b.appendChild(h("button", { class: "opt newopt", type: "button", text: "＋ Nuova sezione…", onclick: function () { nform.hidden = false; ninp.focus(); } }));
+    b.appendChild(nform); b.appendChild(status);
+    b.appendChild(h("p", { class: "sub", text: "Tutti i link restano sempre in «Tutti i link»." }));
+    b.appendChild(h("button", { class: "bigbtn", type: "button", text: "Fatto", onclick: closeSheet }));
     var del = h("button", { class: "danger", type: "button", text: "Elimina dal feed" }), armed = false, tm;
     del.addEventListener("click", function () {
       if (!armed) { armed = true; del.textContent = "Tocca di nuovo per eliminare"; tm = setTimeout(function () { armed = false; del.textContent = "Elimina dal feed"; }, 3000); return; }
@@ -634,14 +717,16 @@ $("addForm").addEventListener("submit", function (e) {
   var inp = $("url"), u = parseUrl(inp.value);
   if (!u) { inp.value = ""; inp.placeholder = "Link non valido, riprova"; hideNotice(); return; }
   var ex = byKey(normKey(u.href));
-  if (ex) { inp.value = ""; showNotice(dupText(ex), "warn", dupActions(ex)); flash(ex); return; }
+  if (ex) { inp.value = ""; showNotice(dupText(ex), "warn", dupActions(ex)); if (view !== "home") flash(ex); return; }
   var ni = makeItem(u);
-  if (view !== "all") ni.sections = [view];
+  if (isSec(view)) ni.sections = [view];
   items.unshift(ni); inp.value = ""; hideNotice(); save(); render(); say(""); window.scrollTo({ top: 0 });
   if (ni.status === "loading") enrich(ni);
-  if (view !== "all") toast("Aggiunto a «" + secName(view) + "»");
-  else if (sections.length) toast("Aggiunto a Generale", "Scegli sezioni", function () { openItemSheet(ni.id); });
+  if (isSec(view)) toast("Aggiunto a «" + secName(view) + "»");
+  else if (sections.length) openItemSheet(ni.id);
+  else toast("Aggiunto a Tutti i link");
 });
+$("backBtn").addEventListener("click", function () { go("home"); });
 $("clearDemo").addEventListener("click", function () { items = items.filter(function (x) { return !x.demo; }); save(); render(); });
 $("mergeDupes").addEventListener("click", function () {
   var n = mergeDupes(); normalize(); save(); render(); say(n ? "Uniti " + n + " doppioni." : "");
