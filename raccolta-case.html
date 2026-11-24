@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Case">
+<meta name="theme-color" content="#0f766e">
+<link rel="apple-touch-icon" href="icon-case.png">
+<link rel="icon" href="icon-case.png">
+<title>Raccolta case</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1f2937; }
+  #app { display: flex; height: 100%; }
+  #side { width: 360px; max-width: 42vw; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #e5e7eb; z-index: 1000; transition: margin-left .2s; }
+  #side.closed { margin-left: -360px; }
+  #top { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; }
+  #top h1 { font-size: 18px; margin: 0 0 10px; }
+  .row { display: flex; gap: 8px; }
+  button { cursor: pointer; border: 0; border-radius: 8px; padding: 9px 12px; font-size: 14px; background: #0f766e; color: #fff; }
+  button.sec { background: #f3f4f6; color: #1f2937; }
+  button.del { background: #fee2e2; color: #b91c1c; }
+  select, input, textarea { width: 100%; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  textarea { resize: vertical; min-height: 60px; }
+  #list { flex: 1; overflow-y: auto; padding: 10px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 10px; cursor: pointer; background: #fff; }
+  .card:hover { border-color: #0f766e; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .price { font-weight: 700; font-size: 17px; }
+  .stars { color: #f59e0b; letter-spacing: 2px; }
+  .addr { color: #6b7280; font-size: 13px; margin: 2px 0; }
+  .note { font-size: 13px; color: #374151; margin-top: 6px; }
+  .card a { font-size: 13px; color: #0f766e; font-weight: 600; text-decoration: none; }
+  #mapwrap { flex: 1; position: relative; }
+  #map { position: absolute; inset: 0; }
+  #toggle { position: absolute; top: 12px; left: 12px; z-index: 900; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900; background: #111827; color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; display: none; }
+  .pin { background: #0f766e; color: #fff; font-weight: 700; font-size: 12px; padding: 4px 8px; border-radius: 14px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); white-space: nowrap; transform: translate(-50%, -100%); position: absolute; }
+  .pin.top { background: #f59e0b; }
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 2000; }
+  #modal .box { background: #fff; width: 440px; max-width: 94vw; max-height: 92vh; overflow-y: auto; border-radius: 16px; padding: 20px; }
+  #modal h2 { margin: 0 0 12px; font-size: 18px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 10px 0 4px; }
+  .starpick span { font-size: 26px; cursor: pointer; color: #d1d5db; }
+  .starpick span.on { color: #f59e0b; }
+  .coords { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .status { margin-top: 8px; font-size: 13px; line-height: 1.4; }
+  .status div { padding: 7px 10px; border-radius: 8px; margin-top: 4px; }
+  .status .ok { background: #dcfce7; color: #166534; }
+  .status .warn { background: #fef3c7; color: #92400e; }
+  .status .info { background: #e0f2fe; color: #075985; }
+  .badge.info { background: #e0f2fe; color: #075985; }
+  .badge { display: inline-block; margin-top: 6px; margin-right: 4px; padding: 3px 8px; border-radius: 8px; font-size: 12px; background: #fef3c7; color: #92400e; }
+  @media (max-width: 700px) { #side { position: absolute; inset: 0 auto 0 0; width: 88vw; max-width: 88vw; } #side.closed { margin-left: -90vw; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <div id="top">
+      <h1>Raccolta case</h1>
+      <div class="row">
+        <button onclick="openForm()">+ Annuncio</button>
+        <select id="sort" onchange="render()">
+          <option value="voto">Ordina: voto</option>
+          <option value="prezzo">Ordina: prezzo</option>
+          <option value="recenti">Ordina: recenti</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="sec" onclick="syncFeed(false)" style="flex:1">↻ Aggiorna dal feed</button>
+      </div>
+      <div class="status" id="feedmsg"></div>
+      <div id="summary" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="sec" onclick="exportJson()">Esporta</button>
+        <button class="sec" onclick="document.getElementById('imp').click()">Importa</button>
+        <input type="file" id="imp" accept=".json" style="display:none" onchange="importJson(event)">
+      </div>
+    </div>
+    <div id="list"></div>
+  </aside>
+  <div id="mapwrap">
+    <button id="toggle" class="sec" onclick="toggleSide()">☰ Lista</button>
+    <div id="hint">Clicca sulla mappa per scegliere il punto</div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="box">
+    <h2 id="mtitle">Nuovo annuncio</h2>
+    <label>Link dell'annuncio</label>
+    <div class="row">
+      <input id="f-link" placeholder="https://www.idealista.it/..." onchange="if(!editId) readLink()">
+      <button class="sec" onclick="readLink()" style="white-space:nowrap">Leggi dal link</button>
+    </div>
+    <div class="status" id="f-status"></div>
+    <label>Prezzo (€)</label>
+    <input id="f-prezzo" type="number" placeholder="250000" oninput="refreshStatus()">
+    <label>Posizione</label>
+    <div class="row">
+      <input id="f-addr" placeholder="Via, civico, città">
+      <button class="sec" onclick="geocode()">Trova</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="sec" onclick="pickOnMap()" style="flex:1">📍 Scegli sulla mappa</button>
+    </div>
+    <div class="coords" id="f-coords">Nessun punto selezionato</div>
+    <label>Voto</label>
+    <div class="starpick" id="f-stars"></div>
+    <label>Note</label>
+    <textarea id="f-note" placeholder="Es. terrazzo, vicino metro, da rivedere..."></textarea>
+    <div class="row" style="margin-top:16px">
+      <button onclick="save()" style="flex:1">Salva</button>
+      <button class="sec" onclick="closeForm()">Annulla</button>
+      <button class="del" id="btn-del" onclick="remove()" style="display:none">Elimina</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const KEY = 'raccolta-case-v1';
+let items = JSON.parse(localStorage.getItem(KEY) || '[]');
+let editId = null, draft = { lat: null, lng: null, voto: 0 }, picking = false, tempMarker = null;
+const markers = {};
+
+const map = L.map('map', { zoomControl: false }).setView([45.4642, 9.19], 12);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+function persist() { localStorage.setItem(KEY, JSON.stringify(items)); }
+function fmtPrice(p) { return p ? Number(p).toLocaleString('it-IT') + ' €' : '— €'; }
+function shortPrice(p) { if (!p) return '—'; return p >= 1000 ? Math.round(p / 1000) + 'k' : p; }
+function stars(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
+function esc(s) { return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function sorted() {
+  const s = document.getElementById('sort').value;
+  const a = [...items];
+  if (s === 'voto') a.sort((x, y) => (y.voto || 0) - (x.voto || 0));
+  if (s === 'prezzo') a.sort((x, y) => (x.prezzo || 1e12) - (y.prezzo || 1e12));
+  if (s === 'recenti') a.sort((x, y) => y.creato - x.creato);
+  return a;
+}
+
+function render() {
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  const data = sorted();
+  if (!data.length) list.innerHTML = '<p style="color:#6b7280;padding:10px">Ancora nessun annuncio. Premi “+ Annuncio”.</p>';
+  data.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = (it.img ? `<img src="${esc(it.img)}" referrerpolicy="no-referrer" onerror="this.remove()" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin-bottom:8px">` : '') + `<div class="row" style="justify-content:space-between"><span class="price">${fmtPrice(it.prezzo)}</span><span class="stars">${stars(it.voto || 0)}</span></div>` +
+      (it.titolo ? `<div class="addr" style="color:#374151">${esc(it.titolo)}</div>` : '') +
+      (it.indirizzo ? `<div class="addr">${esc(it.indirizzo)}</div>` : '') +
+      (it.note ? `<div class="note">${esc(it.note)}</div>` : '') +
+      ((it.feedId && !it.letto ? '<span class="badge info">⏳ Lettura del link in corso…</span>' : '') +
+       (it.lettura === 'fail' ? '<span class="badge">⚠ Link non leggibile in automatico</span>' : '') +
+       (it.letto !== false && !it.prezzo ? '<span class="badge">⚠ Prezzo mancante</span>' : '') +
+       (it.letto !== false && it.lat == null ? '<span class="badge">⚠ Posizione mancante: non è sulla mappa</span>' : '') +
+       (it.prezzo && it.prezzoDaTitolo ? '<span class="badge">Prezzo ricavato dal titolo: verificalo</span>' : '')) +
+      `<div class="row" style="justify-content:space-between;margin-top:8px"><a href="${esc(it.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Apri annuncio ↗</a><a href="#" onclick="event.stopPropagation();openForm('${it.id}');return false">Modifica</a></div>`;
+    card.onclick = () => { if (it.lat != null) { map.flyTo([it.lat, it.lng], 16); markers[it.id] && markers[it.id].openPopup(); } };
+    list.appendChild(card);
+
+    if (it.lat != null) {
+      const icon = L.divIcon({ className: '', html: `<div class="pin ${(it.voto || 0) >= 4 ? 'top' : ''}">${shortPrice(it.prezzo)}</div>`, iconSize: [0, 0] });
+      const m = L.marker([it.lat, it.lng], { icon }).addTo(map);
+      m.bindPopup(`<b>${fmtPrice(it.prezzo)}</b> <span class="stars">${stars(it.voto || 0)}</span><br>${esc(it.indirizzo)}<br>${it.note ? esc(it.note) + '<br>' : ''}<a href="${esc(it.link)}" target="_blank" rel="noopener">Apri annuncio ↗</a>`);
+      markers[it.id] = m;
+    }
+  });
+  const noPos = items.filter(i => i.lat == null && i.letto !== false).length;
+  const noPrice = items.filter(i => !i.prezzo && i.letto !== false).length;
+  document.getElementById('summary').textContent = items.length
+    ? `${items.length} annunci · ${noPos} senza posizione · ${noPrice} senza prezzo` : '';
+}
+
+function fitAll() {
+  const pts = items.filter(i => i.lat != null).map(i => [i.lat, i.lng]);
+  if (pts.length) map.fitBounds(pts, { padding: [60, 60], maxZoom: 15 });
+}
+
+function toggleSide() { document.getElementById('side').classList.toggle('closed'); setTimeout(() => map.invalidateSize(), 250); }
+
+function buildStars() {
+  const box = document.getElementById('f-stars');
+  box.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const s = document.createElement('span');
+    s.textContent = '★';
+    s.className = i <= draft.voto ? 'on' : '';
+    s.onclick = () => { draft.voto = (draft.voto === i ? 0 : i); buildStars(); };
+    box.appendChild(s);
+  }
+}
+
+/* ---- Lettura automatica da link (prezzo + posizione) ---- */
+let readMsg = [];
+const PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+];
+async function fetchHtml(url) {
+  for (const mk of PROXIES) {
+    try {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+      const r = await fetch(mk(url), { signal: ctrl.signal }); clearTimeout(t);
+      if (!r.ok) continue;
+      const txt = await r.text();
+      if (txt && txt.length > 500) return txt;
+    } catch (e) {}
+  }
+  return null;
+}
+function toNum(v) {
+  let s = String(v).trim();
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(',', '.');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : null;
+}
+const okPrice = n => n != null && n >= 5000 && n <= 50000000;
+const okCoord = (a, b) => a != null && b != null && a > 35 && a < 48.5 && b > 6 && b < 19;
+function parseListing(html) {
+  const out = { price: null, priceFromText: false, lat: null, lng: null, addr: '' };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const walk = o => {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) { o.forEach(walk); return; }
+    if (o.price != null && out.price == null) { const n = toNum(o.price); if (okPrice(n)) out.price = n; }
+    if (o.lowPrice != null && out.price == null) { const n = toNum(o.lowPrice); if (okPrice(n)) out.price = n; }
+    if (o.geo && out.lat == null) { const a = toNum(o.geo.latitude), b = toNum(o.geo.longitude); if (okCoord(a, b)) { out.lat = a; out.lng = b; } }
+    if (o.address && typeof o.address === 'object' && !out.addr) out.addr = [o.address.streetAddress, o.address.addressLocality].filter(Boolean).join(', ');
+    Object.values(o).forEach(walk);
+  };
+  doc.querySelectorAll('script[type="application/ld+json"]').forEach(s => { try { walk(JSON.parse(s.textContent)); } catch (e) {} });
+  const meta = n => { const m = doc.querySelector(`meta[property="${n}"],meta[name="${n}"]`); return m ? m.getAttribute('content') : null; };
+  if (out.price == null) { for (const k of ['product:price:amount', 'og:price:amount']) { const n = toNum(meta(k) || ''); if (okPrice(n)) { out.price = n; break; } } }
+  if (out.lat == null) { const a = toNum(meta('place:location:latitude') || ''), b = toNum(meta('place:location:longitude') || ''); if (okCoord(a, b)) { out.lat = a; out.lng = b; } }
+  if (out.lat == null) {
+    let m = html.match(/"latitude"\s*:\s*"?(-?\d+\.\d+)"?[\s\S]{0,80}?"longitude"\s*:\s*"?(-?\d+\.\d+)/);
+    if (!m) m = html.match(/"lat"\s*:\s*"?(-?\d+\.\d+)"?\s*,\s*"(?:lng|lon)"\s*:\s*"?(-?\d+\.\d+)/);
+    if (m && okCoord(+m[1], +m[2])) { out.lat = +m[1]; out.lng = +m[2]; }
+  }
+  if (out.price == null) {
+    const txt = [meta('og:title'), meta('og:description'), meta('description'), doc.title].filter(Boolean).join(' | ');
+    const m = txt.match(/€\s*([\d.]{4,})/) || txt.match(/([\d.]{4,})\s*€/);
+    if (m && okPrice(toNum(m[1]))) { out.price = toNum(m[1]); out.priceFromText = true; }
+  }
+  return out;
+}
+async function readLink() {
+  const link = document.getElementById('f-link').value.trim();
+  if (!/^https?:\/\//i.test(link)) { readMsg = [['warn', 'Inserisci un link valido, che inizi con https://']]; refreshStatus(); return; }
+  readMsg = [['info', 'Lettura del link in corso…']]; refreshStatus();
+  const html = await fetchHtml(link);
+  if (!html) {
+    readMsg = [['warn', 'Non riesco a leggere questo link (il sito blocca la lettura automatica o il servizio non risponde). Inserisci prezzo e posizione a mano.']];
+    refreshStatus(); return;
+  }
+  const d = parseListing(html);
+  readMsg = [];
+  if (d.price != null) {
+    document.getElementById('f-prezzo').value = d.price;
+    readMsg.push(['ok', 'Prezzo letto dal link: ' + fmtPrice(d.price) + (d.priceFromText ? ' (ricavato dal titolo, verificalo)' : '')]);
+  } else readMsg.push(['warn', 'Prezzo non trovato nel link: inseriscilo a mano.']);
+  if (d.lat != null) {
+    if (d.addr && !document.getElementById('f-addr').value) document.getElementById('f-addr').value = d.addr;
+    setPoint(d.lat, d.lng); map.flyTo([d.lat, d.lng], 16);
+    readMsg.push(['ok', 'Posizione letta dal link. Controlla che sia giusta: se l\'annuncio la dà approssimata, trascina il marker.']);
+  } else readMsg.push(['warn', 'Posizione non trovata nel link: scrivi l\'indirizzo e premi Trova, oppure scegli il punto sulla mappa.']);
+  refreshStatus();
+}
+function refreshStatus() {
+  const box = document.getElementById('f-status');
+  const rows = [...readMsg];
+  const reading = readMsg.some(m => m[0] === 'info');
+  if (!reading) {
+    const hasOk = k => readMsg.some(m => m[0] === 'ok' && m[1].startsWith(k));
+    if (!document.getElementById('f-prezzo').value && !readMsg.some(m => m[1].startsWith('Prezzo non trovato'))) rows.push(['warn', 'Prezzo mancante: inseriscilo a mano.']);
+    if (draft.lat == null && !readMsg.some(m => m[1].startsWith('Posizione non trovata'))) rows.push(['warn', 'Posizione mancante: l\'annuncio non comparirà sulla mappa.']);
+    if (draft.lat != null && readMsg.some(m => m[1].startsWith('Posizione non trovata'))) { const i = rows.findIndex(m => m[1].startsWith('Posizione non trovata')); rows.splice(i, 1); }
+    if (document.getElementById('f-prezzo').value && readMsg.some(m => m[1].startsWith('Prezzo non trovato'))) { const i = rows.findIndex(m => m[1].startsWith('Prezzo non trovato')); rows.splice(i, 1); }
+  }
+  box.innerHTML = rows.map(m => `<div class="${m[0]}">${m[0] === 'warn' ? '⚠ ' : m[0] === 'ok' ? '✓ ' : ''}${esc(m[1])}</div>`).join('');
+}
+
+function setPoint(lat, lng) {
+  draft.lat = lat; draft.lng = lng;
+  refreshStatus();
+  document.getElementById('f-coords').textContent = `Punto: ${lat.toFixed(5)}, ${lng.toFixed(5)} (puoi trascinare il marker per correggerlo)`;
+  if (tempMarker) map.removeLayer(tempMarker);
+  tempMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+  tempMarker.on('dragend', e => { const p = e.target.getLatLng(); setPoint(p.lat, p.lng); });
+}
+
+function openForm(id) {
+  editId = id || null;
+  const it = id ? items.find(x => x.id === id) : null;
+  document.getElementById('mtitle').textContent = it ? 'Modifica annuncio' : 'Nuovo annuncio';
+  document.getElementById('f-link').value = it ? it.link : '';
+  document.getElementById('f-prezzo').value = it ? it.prezzo : '';
+  document.getElementById('f-addr').value = it ? it.indirizzo : '';
+  document.getElementById('f-note').value = it ? it.note : '';
+  draft = { lat: it ? it.lat : null, lng: it ? it.lng : null, voto: it ? (it.voto || 0) : 0 };
+  document.getElementById('f-coords').textContent = draft.lat != null ? `Punto: ${draft.lat.toFixed(5)}, ${draft.lng.toFixed(5)}` : 'Nessun punto selezionato';
+  document.getElementById('btn-del').style.display = it ? 'inline-block' : 'none';
+  buildStars();
+  readMsg = [];
+  refreshStatus();
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeForm() {
+  document.getElementById('modal').style.display = 'none';
+  if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+  picking = false; document.getElementById('hint').style.display = 'none';
+}
+
+async function geocode() {
+  const q = document.getElementById('f-addr').value.trim();
+  if (!q) return;
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    const j = await r.json();
+    if (!j.length) { alert('Indirizzo non trovato. Prova a essere più preciso o scegli il punto sulla mappa.'); return; }
+    const lat = parseFloat(j[0].lat), lng = parseFloat(j[0].lon);
+    setPoint(lat, lng);
+    map.flyTo([lat, lng], 16);
+  } catch (e) { alert('Errore di rete nella ricerca indirizzo.'); }
+}
+
+function pickOnMap() {
+  document.getElementById('modal').style.display = 'none';
+  document.getElementById('hint').style.display = 'block';
+  picking = true;
+}
+map.on('click', e => {
+  if (!picking) return;
+  picking = false;
+  document.getElementById('hint').style.display = 'none';
+  setPoint(e.latlng.lat, e.latlng.lng);
+  document.getElementById('modal').style.display = 'flex';
+});
+
+function save() {
+  const link = document.getElementById('f-link').value.trim();
+  if (!link) { alert("Inserisci il link dell'annuncio."); return; }
+  if (draft.lat == null && !confirm('Posizione mancante: senza punto l\'annuncio non comparirà sulla mappa. Salvare comunque?')) return;
+  if (!document.getElementById('f-prezzo').value && !confirm('Prezzo mancante. Salvare comunque?')) return;
+  const old = editId ? items.find(x => x.id === editId) : null;
+  const rec = {
+    ...(old || {}),
+    letto: true, lettura: null, prezzoDaTitolo: false,
+    id: editId || String(Date.now()),
+    link,
+    prezzo: parseFloat(document.getElementById('f-prezzo').value) || null,
+    indirizzo: document.getElementById('f-addr').value.trim(),
+    note: document.getElementById('f-note').value.trim(),
+    lat: draft.lat, lng: draft.lng, voto: draft.voto,
+    creato: editId ? items.find(x => x.id === editId).creato : Date.now()
+  };
+  if (editId) items = items.map(x => x.id === editId ? rec : x); else items.push(rec);
+  persist(); closeForm(); render();
+}
+function remove() {
+  if (!confirm('Eliminare questo annuncio?')) return;
+  items = items.filter(x => x.id !== editId);
+  persist(); closeForm(); render();
+}
+
+function exportJson() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' }));
+  a.download = 'raccolta-case-backup.json';
+  a.click();
+}
+function importJson(ev) {
+  const f = ev.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try { const d = JSON.parse(rd.result); if (Array.isArray(d)) { items = d.map(x => ({ ...x, letto: true })); persist(); render(); fitAll(); } else alert('File non valido.'); }
+    catch (e) { alert('File non valido.'); }
+  };
+  rd.readAsText(f);
+}
+
+/* ---- Collegamento con il feed (sezione "case in vendita") ---- */
+const FEED_KEY = 'feed-personale-v1';
+function normKey(href) {
+  try {
+    const u = new URL(href);
+    const host = u.hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '');
+    const keep = [];
+    u.searchParams.forEach((v, k) => { if (!/^(utm_|fbclid|gclid|igshid|mc_|ref|si$|feature$|pp$|cmpid|spm$|scid|_ga|yclid|msclkid)/i.test(k)) keep.push(k + '=' + v); });
+    keep.sort();
+    return host + u.pathname.replace(/\/+$/, '') + (keep.length ? '?' + keep.join('&') : '');
+  } catch (e) { return ''; }
+}
+function feedMsg(type, text) {
+  document.getElementById('feedmsg').innerHTML = `<div class="${type}">${type === 'warn' ? '⚠ ' : type === 'ok' ? '✓ ' : ''}${esc(text)}</div>`;
+}
+function syncFeed(silent) {
+  let raw = null;
+  try { raw = localStorage.getItem(FEED_KEY); } catch (e) {}
+  if (!raw) { feedMsg('warn', 'Non trovo il feed. Apri il feed e questa pagina dallo stesso sito (stesso indirizzo GitHub Pages) e sullo stesso dispositivo.'); return; }
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { feedMsg('warn', 'Non riesco a leggere i dati del feed.'); return; }
+  const secs = (d.sections || []).filter(s => /vendit/i.test(s.name || ''));
+  if (!secs.length) {
+    const nomi = (d.sections || []).map(s => s.name).join(', ') || 'nessuna';
+    feedMsg('warn', 'Nel feed non c\'è una sezione "case in vendita". Sezioni trovate: ' + nomi + '.'); return;
+  }
+  const ids = secs.map(s => s.id);
+  const list = (d.items || []).filter(x => !x.demo && x.url && x.url !== '#' && (x.sections || []).some(i => ids.includes(i)));
+  let added = 0;
+  list.forEach(x => {
+    const k = normKey(x.url);
+    const ex = items.find(i => i.feedId === x.id || (k && normKey(i.link) === k));
+    if (ex) {
+      if (!ex.feedId) ex.feedId = x.id;
+      if (x.title && ex.titolo !== x.title) ex.titolo = x.title;
+      if (x.img && !ex.img) ex.img = x.img;
+    } else {
+      items.push({ id: 'f' + x.id, feedId: x.id, link: x.url, titolo: x.title || '', img: x.img || '',
+        prezzo: null, indirizzo: '', note: '', lat: null, lng: null, voto: 0, creato: Date.now(), letto: false });
+      added++;
+    }
+  });
+  persist(); render();
+  feedMsg('ok', `Feed collegato: ${list.length} link in «${secs.map(s => s.name).join(', ')}»` + (added ? `, ${added} nuovi.` : ', nessuno di nuovo.'));
+  processQueue();
+}
+let reading = false;
+async function processQueue() {
+  if (reading) return;
+  reading = true;
+  try {
+    for (;;) {
+      const it = items.find(x => x.feedId && !x.letto);
+      if (!it) break;
+      it.letto = true;
+      try { await autoRead(it); } catch (e) { it.lettura = 'fail'; persist(); render(); }
+      await new Promise(r => setTimeout(r, 800));
+    }
+  } finally { reading = false; }
+}
+async function autoRead(it) {
+  const html = await fetchHtml(it.link);
+  if (!html) { it.lettura = 'fail'; }
+  else {
+    const d = parseListing(html);
+    if (d.price != null && !it.prezzo) { it.prezzo = d.price; it.prezzoDaTitolo = d.priceFromText; }
+    if (d.lat != null && it.lat == null) { it.lat = d.lat; it.lng = d.lng; if (!it.indirizzo) it.indirizzo = d.addr; }
+    it.lettura = (d.price != null && d.lat != null) ? 'ok' : 'parziale';
+  }
+  persist(); render();
+}
+window.addEventListener('storage', e => { if (e.key === FEED_KEY) syncFeed(true); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFeed(true); });
+
+if (window.innerWidth <= 700) document.getElementById('side').classList.add('closed');
+map.invalidateSize();
+render(); fitAll(); syncFeed(true);
+</script>
+</body>
+</html>
