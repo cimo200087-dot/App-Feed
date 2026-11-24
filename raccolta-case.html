@@ -36,7 +36,7 @@
   #mapwrap { flex: 1; position: relative; }
   #map { position: absolute; inset: 0; }
   #toggle { position: absolute; top: 12px; left: 12px; z-index: 900; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-  #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 900; background: #111827; color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; display: none; }
+  #hint { max-width: 90vw; text-align: center; position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 900; background: #111827; color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; display: none; }
   .pin { background: #0f766e; color: #fff; font-weight: 700; font-size: 12px; padding: 4px 8px; border-radius: 14px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); white-space: nowrap; transform: translate(-50%, -100%); position: absolute; }
   .pin.top { background: #f59e0b; }
   #modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 2000; }
@@ -53,14 +53,14 @@
   .status .info { background: #e0f2fe; color: #075985; }
   .badge.info { background: #e0f2fe; color: #075985; }
   .badge { display: inline-block; margin-top: 6px; margin-right: 4px; padding: 3px 8px; border-radius: 8px; font-size: 12px; background: #fef3c7; color: #92400e; }
-  @media (max-width: 700px) { #side { position: absolute; inset: 0 auto 0 0; width: 88vw; max-width: 88vw; } #side.closed { margin-left: -90vw; } }
+  @media (max-width: 700px) { input, select, textarea { font-size: 16px; } #side { position: absolute; inset: 0 auto 0 0; width: 88vw; max-width: 88vw; } #side.closed { margin-left: -90vw; } }
 </style>
 </head>
 <body>
 <div id="app">
   <aside id="side">
     <div id="top">
-      <h1>Raccolta case</h1>
+      <h1>Raccolta case <a href="./" style="font-size:13px;font-weight:500;color:#0f766e;text-decoration:none;margin-left:8px">‹ Vai al feed</a></h1>
       <div class="row">
         <button onclick="openForm()">+ Annuncio</button>
         <select id="sort" onchange="render()">
@@ -84,7 +84,8 @@
   </aside>
   <div id="mapwrap">
     <button id="toggle" class="sec" onclick="toggleSide()">☰ Lista</button>
-    <div id="hint">Clicca sulla mappa per scegliere il punto</div>
+    <div id="hint"><span id="hinttext">Clicca sulla mappa per scegliere il punto</span> <button onclick="cancelPick()" style="margin-left:8px;padding:3px 10px;background:#374151;font-size:12px">Annulla</button></div>
+    <button id="todo" class="sec" onclick="toggleSide()" style="position:absolute;top:12px;left:104px;z-index:900;display:none;box-shadow:0 2px 8px rgba(0,0,0,.25);background:#fef3c7;color:#92400e"></button>
     <div id="map"></div>
   </div>
 </div>
@@ -132,6 +133,7 @@ const map = L.map('map', { zoomControl: false }).setView([45.4642, 9.19], 12);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
+function safeUrl(u) { return /^https?:\/\//i.test(u || '') ? u : '#'; }
 function persist() { localStorage.setItem(KEY, JSON.stringify(items)); }
 function fmtPrice(p) { return p ? Number(p).toLocaleString('it-IT') + ' €' : '— €'; }
 function shortPrice(p) { if (!p) return '—'; return p >= 1000 ? Math.round(p / 1000) + 'k' : p; }
@@ -165,14 +167,14 @@ function render() {
        (it.letto !== false && !it.prezzo ? '<span class="badge">⚠ Prezzo mancante</span>' : '') +
        (it.letto !== false && it.lat == null ? '<span class="badge">⚠ Posizione mancante: non è sulla mappa</span>' : '') +
        (it.prezzo && it.prezzoDaTitolo ? '<span class="badge">Prezzo ricavato dal titolo: verificalo</span>' : '')) +
-      `<div class="row" style="justify-content:space-between;margin-top:8px"><a href="${esc(it.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Apri annuncio ↗</a><a href="#" onclick="event.stopPropagation();openForm('${it.id}');return false">Modifica</a></div>`;
+      `<div class="row" style="justify-content:space-between;margin-top:8px"><a href="${esc(safeUrl(it.link))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Apri annuncio ↗</a>${it.lat == null ? `<a href="#" onclick="event.stopPropagation();startPlace('${it.id}');return false">📍 Posiziona</a>` : ''}<a href="#" onclick="event.stopPropagation();openForm('${it.id}');return false">Modifica</a></div>`;
     card.onclick = () => { if (it.lat != null) { map.flyTo([it.lat, it.lng], 16); markers[it.id] && markers[it.id].openPopup(); } };
     list.appendChild(card);
 
     if (it.lat != null) {
       const icon = L.divIcon({ className: '', html: `<div class="pin ${(it.voto || 0) >= 4 ? 'top' : ''}">${shortPrice(it.prezzo)}</div>`, iconSize: [0, 0] });
       const m = L.marker([it.lat, it.lng], { icon }).addTo(map);
-      m.bindPopup(`<b>${fmtPrice(it.prezzo)}</b> <span class="stars">${stars(it.voto || 0)}</span><br>${esc(it.indirizzo)}<br>${it.note ? esc(it.note) + '<br>' : ''}<a href="${esc(it.link)}" target="_blank" rel="noopener">Apri annuncio ↗</a>`);
+      m.bindPopup(`<b>${fmtPrice(it.prezzo)}</b> <span class="stars">${stars(it.voto || 0)}</span><br>${esc(it.indirizzo)}<br>${it.note ? esc(it.note) + '<br>' : ''}<a href="${esc(safeUrl(it.link))}" target="_blank" rel="noopener">Apri annuncio ↗</a>`);
       markers[it.id] = m;
     }
   });
@@ -180,6 +182,7 @@ function render() {
   const noPrice = items.filter(i => !i.prezzo && i.letto !== false).length;
   document.getElementById('summary').textContent = items.length
     ? `${items.length} annunci · ${noPos} senza posizione · ${noPrice} senza prezzo` : '';
+  updateTodo();
 }
 
 function fitAll() {
@@ -187,7 +190,7 @@ function fitAll() {
   if (pts.length) map.fitBounds(pts, { padding: [60, 60], maxZoom: 15 });
 }
 
-function toggleSide() { document.getElementById('side').classList.toggle('closed'); setTimeout(() => map.invalidateSize(), 250); }
+function toggleSide() { document.getElementById('side').classList.toggle('closed'); setTimeout(() => map.invalidateSize(), 250); updateTodo(); }
 
 function buildStars() {
   const box = document.getElementById('f-stars');
@@ -210,7 +213,7 @@ const PROXIES = [
 async function fetchHtml(url) {
   for (const mk of PROXIES) {
     try {
-      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 8000);
       const r = await fetch(mk(url), { signal: ctrl.signal }); clearTimeout(t);
       if (!r.ok) continue;
       const txt = await r.text();
@@ -335,12 +338,43 @@ async function geocode() {
   } catch (e) { alert('Errore di rete nella ricerca indirizzo.'); }
 }
 
+let placingId = null;
 function pickOnMap() {
   document.getElementById('modal').style.display = 'none';
+  document.getElementById('hinttext').textContent = 'Clicca sulla mappa per scegliere il punto';
   document.getElementById('hint').style.display = 'block';
   picking = true;
 }
+function startPlace(id) {
+  const it = items.find(x => x.id === id); if (!it) return;
+  placingId = id; picking = false;
+  if (window.innerWidth <= 700) document.getElementById('side').classList.add('closed');
+  setTimeout(() => map.invalidateSize(), 250);
+  document.getElementById('hinttext').textContent = 'Tocca la mappa dove si trova: ' + (it.titolo || it.link).slice(0, 40);
+  document.getElementById('hint').style.display = 'block';
+  updateTodo();
+}
+function cancelPick() {
+  const wasForm = picking;
+  picking = false; placingId = null;
+  document.getElementById('hint').style.display = 'none';
+  if (wasForm) document.getElementById('modal').style.display = 'flex';
+}
+function updateTodo() {
+  const n = items.filter(i => i.lat == null && i.letto !== false).length;
+  const closed = document.getElementById('side').classList.contains('closed');
+  const b = document.getElementById('todo');
+  b.style.display = (n > 0 && closed && !placingId) ? 'block' : 'none';
+  b.textContent = '📍 ' + n + (n === 1 ? ' da posizionare' : ' da posizionare');
+}
 map.on('click', e => {
+  if (placingId) {
+    const it = items.find(x => x.id === placingId);
+    placingId = null;
+    document.getElementById('hint').style.display = 'none';
+    if (it) { it.lat = e.latlng.lat; it.lng = e.latlng.lng; persist(); render(); map.flyTo([it.lat, it.lng], Math.max(map.getZoom(), 15)); }
+    return;
+  }
   if (!picking) return;
   picking = false;
   document.getElementById('hint').style.display = 'none';
@@ -370,6 +404,8 @@ function save() {
 }
 function remove() {
   if (!confirm('Eliminare questo annuncio?')) return;
+  const gone = items.find(x => x.id === editId);
+  if (gone && gone.feedId) { const r = removedIds(); r.push(gone.feedId); try { localStorage.setItem(RM_KEY, JSON.stringify(r)); } catch (e) {} }
   items = items.filter(x => x.id !== editId);
   persist(); closeForm(); render();
 }
@@ -392,6 +428,8 @@ function importJson(ev) {
 
 /* ---- Collegamento con il feed (sezione "case in vendita") ---- */
 const FEED_KEY = 'feed-personale-v1';
+const RM_KEY = 'raccolta-case-removed';
+function removedIds() { try { return JSON.parse(localStorage.getItem(RM_KEY) || '[]'); } catch (e) { return []; } }
 function normKey(href) {
   try {
     const u = new URL(href);
@@ -417,7 +455,8 @@ function syncFeed(silent) {
     feedMsg('warn', 'Nel feed non c\'è una sezione "case in vendita". Sezioni trovate: ' + nomi + '.'); return;
   }
   const ids = secs.map(s => s.id);
-  const list = (d.items || []).filter(x => !x.demo && x.url && x.url !== '#' && (x.sections || []).some(i => ids.includes(i)));
+  const rem = removedIds();
+  const list = (d.items || []).filter(x => !x.demo && x.url && x.url !== '#' && !rem.includes(x.id) && (x.sections || []).some(i => ids.includes(i)));
   let added = 0;
   list.forEach(x => {
     const k = normKey(x.url);
